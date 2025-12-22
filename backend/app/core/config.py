@@ -11,8 +11,14 @@ class Settings(BaseSettings):
     """Настройки приложения из переменных окружения"""
     
     # Database
+    # Для разработки без Docker можно использовать SQLite:
+    # DATABASE_URL: str = "sqlite:///./iqstocker.db"
+    # Для production используйте PostgreSQL:
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/iqstocker_auto"
-    REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str | None = None  # Опционально, можно обойтись без Redis на начальном этапе
+    
+    # Использовать SQLite для разработки (если нет Docker/PostgreSQL)
+    USE_SQLITE: bool = False
     
     # JWT
     SECRET_KEY: str = "your-secret-key-generate-me-change-in-production"

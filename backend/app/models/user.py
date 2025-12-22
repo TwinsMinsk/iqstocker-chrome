@@ -7,15 +7,24 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from uuid import uuid4
 from datetime import datetime
+from app.core.config import settings
 
 from app.db.base import Base, TimestampMixin, SoftDeleteMixin
+
+# Используем UUID для PostgreSQL, String для SQLite
+if settings.USE_SQLITE:
+    ID_TYPE = String(36)
+    ID_DEFAULT = lambda: str(uuid4())
+else:
+    ID_TYPE = UUID(as_uuid=True)
+    ID_DEFAULT = uuid4
 
 
 class User(Base, TimestampMixin, SoftDeleteMixin):
     """User model"""
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id = Column(ID_TYPE, primary_key=True, default=ID_DEFAULT)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     oauth_google_id = Column(String(255), unique=True, nullable=True)

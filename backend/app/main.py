@@ -44,10 +44,25 @@ app.add_middleware(
 # Routes
 app.include_router(v1_router, prefix=settings.API_V1_PREFIX)
 
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "IQStocker Chrome Auto API",
+        "version": "1.0.0",
+        "docs": "/api/docs",
+        "health": "/health"
+    }
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "ok", "version": "1.0.0", "environment": settings.ENVIRONMENT}
+    return {
+        "status": "ok",
+        "version": "1.0.0",
+        "environment": settings.ENVIRONMENT,
+        "database": "connected" if settings.DATABASE_URL else "not configured"
+    }
 
 if __name__ == "__main__":
     import uvicorn
