@@ -9,14 +9,23 @@ from sqlalchemy.sql import func
 from uuid import uuid4
 
 from app.db.base import Base
+from app.core.config import settings
+
+# Используем UUID для PostgreSQL, String для SQLite (совместимость с User model)
+if settings.USE_SQLITE:
+    ID_TYPE = String(36)
+    ID_DEFAULT = lambda: str(uuid4())
+else:
+    ID_TYPE = UUID(as_uuid=True)
+    ID_DEFAULT = uuid4
 
 
 class ExtensionLog(Base):
     """Extension Log model - только метаданные, БЕЗ текстов промптов!"""
     __tablename__ = "extension_logs"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(ID_TYPE, primary_key=True, default=ID_DEFAULT)
+    user_id = Column(ID_TYPE, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     session_id = Column(String(255), nullable=False, index=True)
     status = Column(String(50), nullable=False, index=True)  # 'success', 'error', 'paused', 'completed'

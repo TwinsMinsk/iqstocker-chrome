@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     REDIS_URL: str | None = None  # Опционально, можно обойтись без Redis на начальном этапе
     
     # Использовать SQLite для разработки (если нет Docker/PostgreSQL)
-    USE_SQLITE: bool = False
+    USE_SQLITE: bool = True
     
     # JWT
     SECRET_KEY: str = "your-secret-key-generate-me-change-in-production"
@@ -50,6 +50,30 @@ class Settings(BaseSettings):
     
     # API
     API_V1_PREFIX: str = "/api/v1"
+    
+    # Security & Protection Settings
+    # Batch validation settings
+    BATCH_VALIDATION_ENABLED: bool = True
+    SESSION_TOKEN_TTL_HOURS: int = 1
+    SESSION_TOKEN_SECRET: str = "session-token-secret-change-me"
+    
+    # Rate limiting
+    RATE_LIMIT_BATCH_REQUESTS: int = 1  # requests per window
+    RATE_LIMIT_BATCH_WINDOW: int = 60  # seconds
+    RATE_LIMIT_API_REQUESTS: int = 100
+    RATE_LIMIT_API_WINDOW: int = 60
+    
+    # Fingerprinting (optional)
+    FINGERPRINTING_ENABLED: bool = False
+    MAX_DEVICES_PER_LICENSE: int = 3
+    
+    # Graceful degradation
+    CACHE_PERMISSION_TTL: int = 300  # 5 minutes
+    
+    # Extension config defaults
+    DEFAULT_MIN_INTERVAL_MS: int = 60000  # 60 seconds
+    DEFAULT_MAX_INTERVAL_MS: int = 300000  # 5 minutes
+    DEFAULT_MAX_RETRIES: int = 3
     
     class Config:
         env_file = ".env"

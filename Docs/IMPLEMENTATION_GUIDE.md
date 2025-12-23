@@ -422,6 +422,60 @@ alembic upgrade head
 
 ---
 
+### Шаг 1.4: Extension Security Endpoints (День 3) 🔥
+
+#### НОВОЕ: Система защиты расширения
+
+**Документация:** См. `SECURITY_PROTECTION_GUIDE.md`
+
+Мы реализуем **многоуровневую защиту** с batch validation:
+
+#### Уже реализовано:
+- ✅ `app/schemas/extension.py` - Schemas для endpoints
+- ✅ `app/services/extension_service.py` - Бизнес-логика защиты
+- ✅ `app/api/v1/endpoints/extensions.py` - Защищённые endpoints
+- ✅ `app/integrations/redis_client.py` - Redis для session storage
+- ✅ `app/core/config.py` - Настройки защиты
+
+#### Ключевые endpoints:
+```python
+# 1. Batch Validation (основной endpoint)
+POST /api/v1/extensions/batch-validate
+# Запрос разрешения на всю сессию, резервирование кредитов
+
+# 2. Finalize Session
+POST /api/v1/extensions/finalize-session
+# Подтверждение использования, корректировка кредитов
+
+# 3. Validate Key (legacy)
+POST /api/v1/extensions/validate-key
+# Простая проверка лицензии
+
+# 4. Get Balance
+GET /api/v1/extensions/balance
+# Получить текущий баланс
+
+# 5. Health Check
+GET /api/v1/extensions/health
+# Ultra-fast проверка доступности API
+```
+
+#### Инициализация Redis в main.py:
+```python
+# app/main.py
+from app.integrations.redis_client import init_redis, close_redis
+
+@app.on_event("startup")
+async def startup_event():
+    await init_redis()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_redis()
+```
+
+---
+
 ## 🎯 PHASE 1: FRONTEND (Недели 2-3)
 
 ### Шаг 2.1: Next.js Setup (День 1)
@@ -566,9 +620,189 @@ export default function RootLayout({
 </html>
 ```
 
-### Шаг 3.2: Popup React Component
+### Шаг 3.2: Popup React Component с защитой 🔐
 
-#### Используйте Cursor:
+#### ОБНОВЛЕНО: Использовать batch validation вместо простой валидации
+
+**Документация:** См. `SECURITY_PROTECTION_GUIDE.md`
+
+#### Создайте API клиент с batch validation:
+
+**src/utils/api.ts:**
+```typescript
+import { ExtensionConfig } from '../types';
+
+const API_BASE_URL = 'https://api.yourdomain.com/api/v1';
+
+interface BatchValidateResponse {
+  allowed: boolean;
+  session_token?: string;
+  expires_at?: string;
+  config?: ExtensionConfig;
+  credits_reserved?: number;
+  credits_remaining?: number;
+  error?: string;
+  message?: string;
+}
+
+export class ExtensionAPI {
+  
+  /**
+   * Batch validation - основной метод для защиты
+   * Запрашивает разрешение на всю сессию
+   */
+  async batchValidate(
+    licenseKey: string,
+    promptsCount: number
+  ): Promise<BatchValidateResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/extensions/batch-validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          license_key: licenseKey,
+          prompts_count: promptsCount
+        })
+      });
+      
+      return await response.json();
+    } catch (error) {
+      // Graceful degradation - см. ниже
+      return this.handleAPIError(error);
+    }
+  }
+  
+  /**
+   * Финализация сессии после завершения
+   */
+  async finalizeSession(
+    sessionToken: string,
+    promptsSent: number,
+    errorsCount: number = 0
+  ): Promise<void> {
+    await fetch(`${API_BASE_URL}/extensions/finalize-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_token: sessionToken,
+        prompts_sent: promptsSent,
+        errors_count: errorsCount
+      })
+    });
+  }
+  
+  /**
+   * Health check для graceful degradation
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/extensions/health`, {
+        method: 'GET',
+        timeout: 2000  // 2 seconds timeout
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+  
+  /**
+   * Graceful degradation - использовать кэш при недоступности API
+   */
+  private async handleAPIError(error: any): Promise<BatchValidateResponse> {
+    const cached = await this.getCachedPermission();
+    
+    if (cached && Date.now() < cached.expires_at) {
+      console.warn('⚠️ Using cached permission (API unavailable)');
+      return cached;
+    }
+    
+    throw new Error('API unavailable and cache expired');
+  }
+  
+  private async getCachedPermission(): Promise<BatchValidateResponse | null> {
+    const data = await chrome.storage.local.get('cached_permission');
+    return data.cached_permission || null;
+  }
+}
+
+export const api = new ExtensionAPI();
+```
+
+**src/utils/automation.ts:**
+```typescript
+import { api } from './api';
+import { storage } from './storage';
+
+export async function startAutomation(
+  prompts: string[],
+  licenseKey: string
+): Promise<{ success: boolean; message?: string }> {
+  
+  try {
+    // 1. Batch validation - ОДИН запрос для всей сессии
+    const session = await api.batchValidate(licenseKey, prompts.length);
+    
+    if (!session.allowed) {
+      return {
+        success: false,
+        message: session.message || 'Validation failed'
+      };
+    }
+    
+    // 2. Сохранить session token
+    await storage.set('session_token', session.session_token);
+    await storage.set('session_config', session.config);
+    
+    // 3. Отправлять промпты БЕЗ API запросов
+    let sentCount = 0;
+    let errorsCount = 0;
+    
+    for (let i = 0; i < prompts.length; i++) {
+      try {
+        await sendToDiscord(prompts[i]);
+        sentCount++;
+        
+        // Интервал получаем с сервера
+        if (i < prompts.length - 1) {
+          await sleep(session.config.min_interval_ms);
+        }
+      } catch (error) {
+        console.error(`Error sending prompt ${i + 1}:`, error);
+        errorsCount++;
+        
+        if (errorsCount >= session.config.max_retries) {
+          break;
+        }
+      }
+    }
+    
+    // 4. Финализация сессии - ОДИН запрос в конце
+    await api.finalizeSession(
+      session.session_token,
+      sentCount,
+      errorsCount
+    );
+    
+    return {
+      success: true,
+      message: `Successfully sent ${sentCount} prompts`
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message || 'Unknown error'
+    };
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+```
+
+#### Используйте Cursor для создания UI:
 ```
 Промпт:
 "Создай React компонент для popup расширения Chrome (TypeScript):
@@ -576,16 +810,16 @@ export default function RootLayout({
 UI элементы:
 1. License key input (validation, copy button)
 2. Prompts textarea (multiline input)
-3. Interval slider (5-300 сек, default 60)
-4. Buttons: Start, Pause, Stop, Resume
+3. Interval slider (получается с сервера, только для отображения)
+4. Buttons: Start, Pause, Stop
 5. Status display (текущий промпт #, прогресс)
-6. Logs list (последние 20 операций)
+6. Balance display (кредиты)
+7. Logs list (последние 20 операций)
 
 Функционал:
-- Валидировать ключ (POST /extensions/validate-key)
-- Сохранять состояние в chrome.storage.sync
-- Отправлять промпты с интервалом в Content Script
-- Показывать ошибки с красным цветом
+- Использовать startAutomation() из utils/automation.ts
+- Показывать прогресс в реальном времени
+- Graceful degradation (работать offline с кэшем)
 - Экспортировать логи (CSV)
 
 Используй TypeScript, модульную архитектуру.

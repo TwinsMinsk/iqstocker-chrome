@@ -23,13 +23,20 @@ else:
     max_overflow = 20
 
 # Создаём engine
+engine_kwargs = {
+    "pool_pre_ping": pool_pre_ping,
+    "echo": settings.DEBUG,
+}
+
+if pool_size is not None:
+    engine_kwargs["pool_size"] = pool_size
+if max_overflow is not None:
+    engine_kwargs["max_overflow"] = max_overflow
+
 engine = create_engine(
     database_url,
-    pool_pre_ping=pool_pre_ping,
-    pool_size=pool_size,
-    max_overflow=max_overflow,
     connect_args=connect_args,
-    echo=settings.DEBUG,  # Логировать SQL queries в debug mode
+    **engine_kwargs
 )
 
 # Session factory

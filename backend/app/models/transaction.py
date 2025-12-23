@@ -6,16 +6,25 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from uuid import uuid4
+from app.core.config import settings
 
 from app.db.base import Base, TimestampMixin
+
+# Используем UUID для PostgreSQL, String для SQLite (совместимость с User model)
+if settings.USE_SQLITE:
+    ID_TYPE = String(36)
+    ID_DEFAULT = lambda: str(uuid4())
+else:
+    ID_TYPE = UUID(as_uuid=True)
+    ID_DEFAULT = uuid4
 
 
 class Transaction(Base, TimestampMixin):
     """Transaction model"""
     __tablename__ = "transactions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(ID_TYPE, primary_key=True, default=ID_DEFAULT)
+    user_id = Column(ID_TYPE, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     amount = Column(Numeric(10, 2), nullable=False)
     credits = Column(Integer, nullable=False)

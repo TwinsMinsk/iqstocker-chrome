@@ -7,16 +7,25 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from uuid import uuid4
 from datetime import datetime
+from app.core.config import settings
 
 from app.db.base import Base, TimestampMixin
+
+# Используем UUID для PostgreSQL, String для SQLite (совместимость с User model)
+if settings.USE_SQLITE:
+    ID_TYPE = String(36)
+    ID_DEFAULT = lambda: str(uuid4())
+else:
+    ID_TYPE = UUID(as_uuid=True)
+    ID_DEFAULT = uuid4
 
 
 class Subscription(Base, TimestampMixin):
     """Subscription model"""
     __tablename__ = "subscriptions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(ID_TYPE, primary_key=True, default=ID_DEFAULT)
+    user_id = Column(ID_TYPE, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     plan_id = Column(String(50), nullable=False)  # 'free', 'basic', 'standard', 'pro'
     status = Column(String(50), default="active", nullable=False)  # 'active', 'expired', 'cancelled'

@@ -9,6 +9,8 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from app.core.config import settings
 from app.api.v1 import router as v1_router
+from app.integrations.redis_client import init_redis, close_redis
+from app.db.init_db import init_db
 
 # Initialize Sentry
 if settings.SENTRY_DSN:
@@ -43,6 +45,35 @@ app.add_middleware(
 
 # Routes
 app.include_router(v1_router, prefix=settings.API_V1_PREFIX)
+
+
+# Startup/Shutdown events
+@app.on_event("startup")
+async def startup_event():
+    """Инициализация при старте приложения"""
+    # Создаем таблицы в базе данных (если их еще нет)
+    try:
+        init_db()
+        print("✅ Database tables initialized")
+    except Exception as e:
+        print(f"⚠️ Database initialization error: {e}")
+    
+    # Инициализация Redis
+    try:
+        await init_redis()
+    except Exception as e:
+        print(f"⚠️ Redis initialization failed: {e}")
+        print("⚠️ Continuing without Redis...")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Очистка при завершении приложения"""
+    try:
+        await close_redis()
+    except Exception as e:
+        print(f"⚠️ Redis shutdown error: {e}")
+
 
 @app.get("/")
 async def root():
