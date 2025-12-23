@@ -37,15 +37,22 @@ jobs:
       with:
         python-version: '3.11'
     
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
     - name: Install dependencies
       run: |
         cd backend
-        pip install -r requirements.txt
+        poetry install --no-interaction --no-root
     
     - name: Run tests
       run: |
         cd backend
-        pytest
+        poetry run pytest
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
 
