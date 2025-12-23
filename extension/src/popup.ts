@@ -234,8 +234,47 @@ async function handleTestDiscord(): Promise<void> {
       return;
     }
     
-    // Отправить сообщение в content script
-    await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT' });
+    // Проверить что вкладка - Discord
+    if (!tab.url || !tab.url.includes('discord.com')) {
+      settingsState.discordStatus = '❌ Откройте страницу Discord (discord.com)';
+      render();
+      return;
+    }
+    
+    // Попытаться отправить сообщение в content script
+    let messageSent = false;
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT' });
+      messageSent = true;
+    } catch (sendError: any) {
+      // Content script не загружен - инжектировать программно
+      console.log('Content script not loaded, injecting...', sendError);
+      
+      try {
+        // Инжектировать content script
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        });
+        
+        // Подождать немного для загрузки
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Попробовать снова
+        await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT' });
+        messageSent = true;
+      } catch (injectError: any) {
+        settingsState.discordStatus = `❌ Не удалось загрузить скрипт: ${injectError.message}. Перезагрузите страницу Discord.`;
+        render();
+        return;
+      }
+    }
+    
+    if (!messageSent) {
+      settingsState.discordStatus = '❌ Не удалось отправить сообщение';
+      render();
+      return;
+    }
     
     // Ждать ответа
     const listener = (message: any) => {
