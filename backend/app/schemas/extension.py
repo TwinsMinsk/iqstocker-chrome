@@ -1,7 +1,7 @@
 """
 Extension schemas для валидации и защиты
 """
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -21,7 +21,8 @@ class BatchValidateRequest(BaseModel):
     license_key: str = Field(..., min_length=20, max_length=100)
     prompts_count: int = Field(..., ge=1, le=1000, description="Количество промптов в сессии")
     
-    @validator('prompts_count')
+    @field_validator('prompts_count')
+    @classmethod
     def validate_prompts_count(cls, v):
         if v > 1000:
             raise ValueError('Maximum 1000 prompts per session')

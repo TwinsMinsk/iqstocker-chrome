@@ -38,10 +38,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS
-)
+# TrustedHostMiddleware - отключаем в тестовом окружении
+# В тестах TestClient использует "testserver" как host
+if settings.ENVIRONMENT != "test":
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.ALLOWED_HOSTS
+    )
+else:
+    # В тестовом окружении добавляем "testserver" в allowed_hosts
+    test_allowed_hosts = list(settings.ALLOWED_HOSTS) + ["testserver"]
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=test_allowed_hosts
+    )
 
 # Routes
 app.include_router(v1_router, prefix=settings.API_V1_PREFIX)
