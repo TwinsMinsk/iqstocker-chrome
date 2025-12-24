@@ -1,7 +1,7 @@
 """
 Pydantic схемы для пользователей
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
@@ -10,7 +10,19 @@ from decimal import Decimal
 class BalanceInfo(BaseModel):
     """Информация о балансе"""
     credits: int
-    eur_equivalent: Decimal = Field(..., decimal_places=2)
+    eur_equivalent: Decimal = Field(..., description="Эквивалент в EUR с точностью до 2 знаков")
+    
+    @field_validator('eur_equivalent')
+    @classmethod
+    def validate_decimal_places(cls, v: Decimal) -> Decimal:
+        """Проверка количества знаков после запятой (максимум 2)"""
+        # Преобразуем в строку и проверяем количество знаков после точки
+        str_value = str(v)
+        if '.' in str_value:
+            decimal_part = str_value.split('.')[1]
+            if len(decimal_part) > 2:
+                raise ValueError('eur_equivalent должен иметь максимум 2 знака после запятой')
+        return v
 
 
 class SubscriptionInfo(BaseModel):

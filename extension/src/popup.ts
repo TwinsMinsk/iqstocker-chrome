@@ -4,7 +4,6 @@
  * Использует batch validation для защиты
  */
 
-import { startAutomation, AutomationResult } from './utils/automation';
 import { apiClient } from './utils/api-client';
 import { cleanPrompts, parsePromptsFromText } from './utils/prompt-cleaner';
 
@@ -20,6 +19,8 @@ interface UIState {
   error: string | null;
   delayMin: number;  // Минимальная задержка в секундах
   delayMax: number;  // Максимальная задержка в секундах
+  keyValidationStatus: 'idle' | 'checking' | 'valid' | 'invalid' | null;  // Статус проверки ключа
+  keyValidationMessage: string | null;  // Сообщение о результате проверки
 }
 
 let state: UIState = {
@@ -32,19 +33,17 @@ let state: UIState = {
   balance: null,
   error: null,
   delayMin: 30,  // По умолчанию 30 секунд
-  delayMax: 60   // По умолчанию 60 секунд
+  delayMax: 60,   // По умолчанию 60 секунд
+  keyValidationStatus: null,
+  keyValidationMessage: null
 };
 
 // Дополнительное состояние для настроек
 interface SettingsState {
-  offlineMode: boolean;
-  customSelector: string;
   discordStatus: string | null;
 }
 
 let settingsState: SettingsState = {
-  offlineMode: false,
-  customSelector: '',
   discordStatus: null
 };
 
@@ -53,6 +52,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadState();
   render();
   setupEventListeners();
+  // Синхронизировать UI с текущим состоянием очереди в SW (если она уже запущена)
+  try {
+    const resp = await chrome.runtime.sendMessage({ type: 'QUEUE_STATUS_REQUEST' });
+    if (resp?.ok && resp.state) {
+      const s = resp.state as any;
+      state.totalPrompts = Array.isArray(s.prompts) ? s.prompts.length : 0;
+      state.currentPrompt = typeof s.current_index === 'number' ? s.current_index : 0;
+      state.isRunning = s.status === 'sending' || s.status === 'validating';
+      state.status = mapQueueStatusToText(s);
+      state.error = s.last_error || null;
+      render();
+    }
+  } catch {
+    // ignore
+  }
 });
 
 /**
@@ -63,9 +77,7 @@ async function loadState(): Promise<void> {
     'license_key', 
     'prompts', 
     'delay_min', 
-    'delay_max',
-    'offline_mode',
-    'custom_discord_selector'
+    'delay_max'
   ]);
   
   if (result.license_key) {
@@ -84,23 +96,9 @@ async function loadState(): Promise<void> {
     state.delayMax = result.delay_max;
   }
   
-  // Загрузить настройки
-  if (result.offline_mode !== undefined) {
-    settingsState.offlineMode = result.offline_mode;
-  }
-  if (result.custom_discord_selector) {
-    settingsState.customSelector = result.custom_discord_selector;
-  }
-  
-  // Загрузить баланс если есть ключ и не offline режим
-  if (state.licenseKey && !settingsState.offlineMode) {
-    try {
-      const balanceData = await apiClient.getBalance(state.licenseKey);
-      state.balance = balanceData.balance;
-    } catch (error) {
-      console.error('Failed to load balance:', error);
-    }
-  }
+  // НЕ загружаем баланс автоматически при старте
+  // Баланс будет загружен только после нажатия "Применить"
+  // Это позволяет пользователю сначала ввести ключ, а потом проверить его
 }
 
 /**
@@ -111,9 +109,7 @@ async function saveState(): Promise<void> {
     license_key: state.licenseKey,
     prompts: state.prompts,
     delay_min: state.delayMin,
-    delay_max: state.delayMax,
-    offline_mode: settingsState.offlineMode,
-    custom_discord_selector: settingsState.customSelector
+    delay_max: state.delayMax
   });
 }
 
@@ -128,22 +124,27 @@ function setupEventListeners(): void {
   const startButton = document.getElementById('start-btn') as HTMLButtonElement;
   const pauseButton = document.getElementById('pause-btn') as HTMLButtonElement;
   const stopButton = document.getElementById('stop-btn') as HTMLButtonElement;
-  const copyKeyButton = document.getElementById('copy-key-btn') as HTMLButtonElement;
+  const applyKeyButton = document.getElementById('apply-key-btn') as HTMLButtonElement;
   
   if (licenseInput) {
     licenseInput.addEventListener('input', (e) => {
       state.licenseKey = (e.target as HTMLInputElement).value;
       saveState();
-      updateBalance();
+      // Сбросить статус валидации при изменении ключа
+      state.keyValidationStatus = null;
+      state.keyValidationMessage = null;
+      // Не сбрасываем balance сразу - он обновится при нажатии "Применить"
+      render();
     });
   }
   
   if (promptsTextarea) {
     promptsTextarea.addEventListener('input', (e) => {
       const text = (e.target as HTMLTextAreaElement).value;
-      // Сохранить сырой текст, очистка будет при отправке
-      state.prompts = text.split('\n').filter(p => p.trim().length > 0);
+      // Сохранить ВСЕ строки (включая пустые) - они нужны как разделители промптов
+      state.prompts = text.split('\n');
       saveState();
+      render();
     });
   }
   
@@ -179,37 +180,25 @@ function setupEventListeners(): void {
     stopButton.addEventListener('click', handleStop);
   }
   
-  if (copyKeyButton) {
-    copyKeyButton.addEventListener('click', () => {
-      navigator.clipboard.writeText(state.licenseKey);
-      showNotification('Ключ скопирован!');
-    });
+  if (applyKeyButton) {
+    applyKeyButton.addEventListener('click', handleApplyKey);
   }
   
-  // Кнопка проверки Discord
-  const testDiscordButton = document.getElementById('test-discord-btn') as HTMLButtonElement;
-  if (testDiscordButton) {
-    testDiscordButton.addEventListener('click', handleTestDiscord);
+  // Кнопка форматирования промптов
+  const formatPromptsButton = document.getElementById('format-prompts-btn') as HTMLButtonElement;
+  if (formatPromptsButton) {
+    formatPromptsButton.addEventListener('click', handleFormatPrompts);
   }
   
-  // Настройки
-  const offlineModeCheckbox = document.getElementById('offline-mode') as HTMLInputElement;
-  if (offlineModeCheckbox) {
-    offlineModeCheckbox.checked = settingsState.offlineMode;
-    offlineModeCheckbox.addEventListener('change', (e) => {
-      settingsState.offlineMode = (e.target as HTMLInputElement).checked;
-      saveState();
-      render();
-    });
+  // Кнопки поиска Discord
+  const autoSearchButton = document.getElementById('auto-search-btn') as HTMLButtonElement;
+  if (autoSearchButton) {
+    autoSearchButton.addEventListener('click', handleAutoSearch);
   }
-  
-  const customSelectorInput = document.getElementById('custom-selector') as HTMLInputElement;
-  if (customSelectorInput) {
-    customSelectorInput.value = settingsState.customSelector;
-    customSelectorInput.addEventListener('input', (e) => {
-      settingsState.customSelector = (e.target as HTMLInputElement).value;
-      saveState();
-    });
+
+  const manualSearchButton = document.getElementById('manual-search-btn') as HTMLButtonElement;
+  if (manualSearchButton) {
+    manualSearchButton.addEventListener('click', handleManualSearch);
   }
   
   const resetSettingsButton = document.getElementById('reset-settings-btn') as HTMLButtonElement;
@@ -219,90 +208,25 @@ function setupEventListeners(): void {
 }
 
 /**
- * Обработчик проверки Discord
+ * Обработчик Авто-поиска Discord
  */
-async function handleTestDiscord(): Promise<void> {
-  settingsState.discordStatus = 'Проверка...';
+async function handleAutoSearch(): Promise<void> {
+  settingsState.discordStatus = 'Авто-поиск...';
   render();
   
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
-    if (!tab.id) {
-      settingsState.discordStatus = '❌ Не удалось получить активную вкладку';
+    if (!tab.id || !tab.url?.includes('discord.com')) {
+      settingsState.discordStatus = '❌ Откройте вкладку Discord';
       render();
       return;
     }
     
-    // Проверить что вкладка - Discord
-    if (!tab.url || !tab.url.includes('discord.com')) {
-      settingsState.discordStatus = '❌ Откройте страницу Discord (discord.com)';
-      render();
-      return;
-    }
+    await ensureContentScript(tab.id);
+    await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT', picker: false });
     
-    // Попытаться отправить сообщение в content script
-    let messageSent = false;
-    try {
-      await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT' });
-      messageSent = true;
-    } catch (sendError: any) {
-      // Content script не загружен - инжектировать программно
-      console.log('Content script not loaded, injecting...', sendError);
-      
-      try {
-        // Инжектировать content script
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        
-        // Подождать немного для загрузки
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Попробовать снова
-        await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT' });
-        messageSent = true;
-      } catch (injectError: any) {
-        settingsState.discordStatus = `❌ Не удалось загрузить скрипт: ${injectError.message}. Перезагрузите страницу Discord.`;
-        render();
-        return;
-      }
-    }
-    
-    if (!messageSent) {
-      settingsState.discordStatus = '❌ Не удалось отправить сообщение';
-      render();
-      return;
-    }
-    
-    // Ждать ответа
-    const listener = (message: any) => {
-      if (message.type === 'TEST_RESULT') {
-        chrome.runtime.onMessage.removeListener(listener);
-        settingsState.discordStatus = message.message || 
-          (message.found ? '✅ Поле найдено!' : '❌ Поле не найдено');
-        render();
-        
-        // Очистить статус через 5 секунд
-        setTimeout(() => {
-          settingsState.discordStatus = null;
-          render();
-        }, 5000);
-      }
-    };
-    
-    chrome.runtime.onMessage.addListener(listener);
-    
-    // Timeout через 10 секунд
-    setTimeout(() => {
-      chrome.runtime.onMessage.removeListener(listener);
-      if (settingsState.discordStatus === 'Проверка...') {
-        settingsState.discordStatus = '❌ Таймаут проверки';
-        render();
-      }
-    }, 10000);
-    
+    setupStatusListener();
   } catch (error: any) {
     settingsState.discordStatus = `❌ Ошибка: ${error.message}`;
     render();
@@ -310,13 +234,80 @@ async function handleTestDiscord(): Promise<void> {
 }
 
 /**
+ * Обработчик Ручного-поиска Discord
+ */
+async function handleManualSearch(): Promise<void> {
+  settingsState.discordStatus = 'Выберите элемент...';
+  render();
+  
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tab.id || !tab.url?.includes('discord.com')) {
+      settingsState.discordStatus = '❌ Откройте вкладку Discord';
+      render();
+      return;
+    }
+    
+    await ensureContentScript(tab.id);
+    await chrome.tabs.sendMessage(tab.id, { type: 'TEST_INPUT', picker: true });
+    
+    setupStatusListener();
+  } catch (error: any) {
+    settingsState.discordStatus = `❌ Ошибка: ${error.message}`;
+    render();
+  }
+}
+
+/**
+ * Вспомогательная функция для проверки и инъекции content script
+ */
+async function ensureContentScript(tabId: number): Promise<void> {
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+  } catch {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content.js']
+    });
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+}
+
+/**
+ * Установка слушателя для результатов поиска
+ */
+function setupStatusListener(): void {
+  const listener = (message: any) => {
+    if (message.type === 'TEST_RESULT') {
+      chrome.runtime.onMessage.removeListener(listener);
+      if (message.found) {
+        if (message.selector) {
+          settingsState.discordStatus = `✅ Найдено! Селектор: ${message.selector}`;
+        } else {
+          settingsState.discordStatus = '✅ Поле найдено и подсвечено';
+        }
+      } else {
+        // Показать ошибку, если она есть в сообщении
+        settingsState.discordStatus = message.error ? `❌ Ошибка: ${message.error}` : (message.message || '❌ Не удалось найти поле');
+      }
+      render();
+      
+      setTimeout(() => {
+        settingsState.discordStatus = null;
+        render();
+      }, 8000);
+    }
+  };
+  chrome.runtime.onMessage.addListener(listener);
+}
+
+/**
  * Обработчик сброса настроек
  */
 async function handleResetSettings(): Promise<void> {
   if (confirm('Сбросить все настройки?')) {
-    settingsState.offlineMode = false;
-    settingsState.customSelector = '';
-    await chrome.storage.local.remove(['offline_mode', 'custom_discord_selector', 'last_successful_selector']);
+    await chrome.storage.local.remove(['last_successful_selector']);
     saveState();
     render();
     showNotification('Настройки сброшены');
@@ -324,10 +315,105 @@ async function handleResetSettings(): Promise<void> {
 }
 
 /**
+ * Обработчик форматирования промптов
+ */
+function handleFormatPrompts(): void {
+  const promptsTextarea = document.getElementById('prompts') as HTMLTextAreaElement;
+  if (!promptsTextarea) return;
+  
+  const text = promptsTextarea.value;
+  
+  if (!text.trim()) {
+    showNotification('Введите промпты для форматирования');
+    return;
+  }
+  
+  // Парсим промпты
+  const parsedPrompts = parsePromptsFromText(text);
+  const cleanedPrompts = cleanPrompts(parsedPrompts);
+  
+  if (cleanedPrompts.length === 0) {
+    showNotification('Не найдено валидных промптов');
+    return;
+  }
+  
+  // Форматируем: каждый промпт с номером + пустая строка
+  const formatted = cleanedPrompts
+    .map((prompt, index) => `${index + 1}. ${prompt}`)
+    .join('\n\n');
+  
+  // Обновляем textarea
+  promptsTextarea.value = formatted;
+  state.prompts = formatted.split('\n');
+  saveState();
+  render();
+  
+  showNotification(`✓ Отформатировано ${cleanedPrompts.length} промптов`);
+}
+
+/**
+ * Обработчик применения ключа (проверка валидности и получение баланса)
+ */
+async function handleApplyKey(): Promise<void> {
+  const licenseKey = state.licenseKey.trim();
+  
+  if (!licenseKey) {
+    state.keyValidationStatus = 'invalid';
+    state.keyValidationMessage = 'Введите лицензионный ключ';
+    render();
+    return;
+  }
+  
+  // Проверка формата ключа (должен начинаться с sk_live_)
+  if (!licenseKey.startsWith('sk_live_')) {
+    state.keyValidationStatus = 'invalid';
+    state.keyValidationMessage = 'Неверный формат ключа. Ключ должен начинаться с sk_live_';
+    state.balance = null;
+    render();
+    return;
+  }
+  
+  // Установить статус "проверка"
+  state.keyValidationStatus = 'checking';
+  state.keyValidationMessage = 'Проверка ключа...';
+  state.balance = null;
+  render();
+  
+  try {
+    // Проверить ключ через API (getBalance также валидирует ключ)
+    const balanceData = await apiClient.getBalance(licenseKey);
+    
+    // Ключ валидный
+    state.keyValidationStatus = 'valid';
+    state.balance = balanceData.balance;
+    state.keyValidationMessage = `✅ Ключ валиден. Баланс: ${balanceData.balance} кредитов`;
+    
+    // Сохранить ключ в storage
+    await saveState();
+    
+  } catch (error: any) {
+    // Ключ невалидный или ошибка API
+    state.keyValidationStatus = 'invalid';
+    state.balance = null;
+    
+    const errorMessage = error.message || 'Unknown error';
+    if (errorMessage.includes('401') || errorMessage.includes('Invalid')) {
+      state.keyValidationMessage = '❌ Неверный или неактивный ключ';
+    } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
+      state.keyValidationMessage = '❌ Ошибка подключения к серверу. Проверьте интернет';
+    } else {
+      state.keyValidationMessage = `❌ Ошибка: ${errorMessage}`;
+    }
+  }
+  
+  render();
+}
+
+/**
  * Обработчик Start
  */
 async function handleStart(): Promise<void> {
-  if (!state.licenseKey && !settingsState.offlineMode) {
+  if (!state.licenseKey) {
     showError('Введите лицензионный ключ');
     return;
   }
@@ -358,39 +444,26 @@ async function handleStart(): Promise<void> {
   render();
   
   try {
-    const result: AutomationResult = await startAutomation(
-      cleanedPrompts,
-      state.licenseKey || 'offline_key',
-      (current, total, status) => {
-        state.currentPrompt = current;
-        state.totalPrompts = total;
-        state.status = status;
-        render();
-      },
-      {
-        delayMinSeconds: state.delayMin,
-        delayMaxSeconds: state.delayMax
-      }
-    );
-    
-    if (result.success) {
-      state.status = `✅ Завершено: ${result.prompts_sent}/${state.totalPrompts} отправлено`;
-      if (result.errors_count && result.errors_count > 0) {
-        state.status += ` (${result.errors_count} ошибок)`;
-      }
-      
-      // Обновить баланс
-      await updateBalance();
-    } else {
-      state.error = result.message;
-      state.status = 'Ошибка';
+    // Стартуем очередь в Service Worker (MV3-safe)
+    const resp = await chrome.runtime.sendMessage({
+      type: 'QUEUE_START',
+      prompts: cleanedPrompts,
+      license_key: state.licenseKey || '',
+      delay_min_sec: state.delayMin,
+      delay_max_sec: state.delayMax
+    });
+
+    if (!resp?.ok) {
+      throw new Error(resp?.error || 'Не удалось запустить очередь');
     }
-    
+
+    // Состояние дальше будет приходить через QUEUE_STATE
+    state.status = '✅ Очередь запущена';
   } catch (error: any) {
     state.error = error.message || 'Unknown error';
     state.status = 'Ошибка';
   } finally {
-    state.isRunning = false;
+    // isRunning будет управляться сообщениями от SW
     render();
   }
 }
@@ -399,7 +472,7 @@ async function handleStart(): Promise<void> {
  * Обработчик Pause
  */
 function handlePause(): void {
-  // TODO: Реализовать паузу
+  chrome.runtime.sendMessage({ type: 'QUEUE_PAUSE' }).catch(() => {});
   state.status = 'Paused';
   state.isRunning = false;
   render();
@@ -409,6 +482,7 @@ function handlePause(): void {
  * Обработчик Stop
  */
 function handleStop(): void {
+  chrome.runtime.sendMessage({ type: 'QUEUE_STOP' }).catch(() => {});
   state.isRunning = false;
   state.status = 'Stopped';
   render();
@@ -444,11 +518,15 @@ function render(): void {
     ? Math.round((state.currentPrompt / state.totalPrompts) * 100) 
     : 0;
   
+  // Подсчитать количество промптов для отображения
+  const fullText = state.prompts.join('\n');
+  const parsedPrompts = parsePromptsFromText(fullText);
+  const validPromptsCount = cleanPrompts(parsedPrompts).length;
+  
   app.innerHTML = `
     <div class="header">
       <h1>Midjourney Auto</h1>
       ${state.balance !== null ? `<div class="balance">Баланс: ${state.balance} кредитов</div>` : ''}
-      ${settingsState.offlineMode ? `<div class="balance" style="background: rgba(255, 193, 7, 0.3); margin-top: 4px;">⚠️ Offline Mode</div>` : ''}
     </div>
     
     <div class="section">
@@ -461,10 +539,15 @@ function render(): void {
           value="${state.licenseKey}"
           ${state.isRunning ? 'disabled' : ''}
         />
-        <button id="copy-key-btn" class="btn-secondary" ${state.isRunning ? 'disabled' : ''}>
-          📋
+        <button id="apply-key-btn" class="btn-secondary" ${state.isRunning || state.keyValidationStatus === 'checking' ? 'disabled' : ''} title="Проверить и применить ключ">
+          ${state.keyValidationStatus === 'checking' ? '⏳ Проверка...' : '✓ Применить'}
         </button>
       </div>
+      ${state.keyValidationMessage ? `
+        <div class="key-validation-message ${state.keyValidationStatus === 'valid' ? 'key-validation-success' : state.keyValidationStatus === 'invalid' ? 'key-validation-error' : ''}">
+          ${state.keyValidationMessage}
+        </div>
+      ` : ''}
     </div>
     
     <div class="section">
@@ -475,17 +558,38 @@ function render(): void {
         placeholder="Введите промпты, каждый с новой строки..."
         ${state.isRunning ? 'disabled' : ''}
       >${state.prompts.join('\n')}</textarea>
-      <div class="prompts-count">${state.prompts.length} промптов</div>
+      <div class="prompts-info">
+        <span class="prompts-count">${validPromptsCount} промптов</span>
+        <button 
+          id="format-prompts-btn" 
+          class="btn-format"
+          ${state.isRunning ? 'disabled' : ''}
+          title="Отформатировать и подсчитать промпты"
+        >
+          ✨ Форматировать
+        </button>
+      </div>
     </div>
     
     <div class="section">
-      <button 
-        id="test-discord-btn" 
-        class="btn-secondary"
-        ${state.isRunning ? 'disabled' : ''}
-      >
-        🔍 Проверить Discord
-      </button>
+      <div class="button-row">
+        <button 
+          id="auto-search-btn" 
+          class="btn-secondary"
+          ${state.isRunning ? 'disabled' : ''}
+          title="Автоматически найти поле ввода Discord"
+        >
+          🤖 Авто-поиск
+        </button>
+        <button 
+          id="manual-search-btn" 
+          class="btn-secondary"
+          ${state.isRunning ? 'disabled' : ''}
+          title="Вручную выбрать поле ввода на странице"
+        >
+          🎯 Ручной-поиск
+        </button>
+      </div>
       ${settingsState.discordStatus ? `
         <div class="discord-status ${settingsState.discordStatus.includes('✅') ? 'success' : settingsState.discordStatus.includes('❌') ? 'error' : ''}">${settingsState.discordStatus}</div>
       ` : ''}
@@ -545,29 +649,6 @@ function render(): void {
     
     <div class="section settings-section">
       <h3>⚙️ Настройки</h3>
-      
-      <label class="checkbox-label">
-        <input 
-          type="checkbox" 
-          id="offline-mode"
-          ${state.isRunning ? 'disabled' : ''}
-        />
-        <span>Offline Mode (без API)</span>
-      </label>
-      
-      <label for="custom-selector" style="margin-top: 12px; display: block;">
-        Custom Discord Selector
-      </label>
-      <input 
-        type="text" 
-        id="custom-selector" 
-        placeholder="div[role='textbox']"
-        value="${settingsState.customSelector}"
-        ${state.isRunning ? 'disabled' : ''}
-      />
-      <div class="settings-hint">
-        Оставьте пустым для автопоиска
-      </div>
       
       <button 
         id="reset-settings-btn" 
@@ -637,9 +718,38 @@ function showError(message: string): void {
 
 // Слушать сообщения от service worker
 chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === 'OFFLINE_MODE') {
-    state.status = '⚠️ ' + message.message;
+  if (message.type === 'QUEUE_STATE' && message.state) {
+    const s = message.state as any;
+    state.totalPrompts = Array.isArray(s.prompts) ? s.prompts.length : state.totalPrompts;
+    state.currentPrompt = typeof s.current_index === 'number' ? s.current_index : state.currentPrompt;
+    state.isRunning = s.status === 'sending' || s.status === 'validating';
+    state.status = mapQueueStatusToText(s);
+    state.error = s.last_error || null;
     render();
+
+    // Если очередь завершилась — обновить баланс
+    if (s.status === 'done') {
+      updateBalance().catch(() => {});
+    }
   }
 });
+
+/**
+ * Привести статус очереди из SW к читаемому тексту.
+ */
+function mapQueueStatusToText(s: any): string {
+  const status = s?.status;
+  const idx = typeof s?.current_index === 'number' ? s.current_index : 0;
+  const total = Array.isArray(s?.prompts) ? s.prompts.length : 0;
+  const err = s?.last_error ? ` (❌ ${s.last_error})` : '';
+
+  if (status === 'idle') return 'Ready';
+  if (status === 'validating') return 'Проверка лицензии...';
+  if (status === 'sending') return `Отправка... ${idx}/${total}`;
+  if (status === 'paused') return `Пауза ${idx}/${total}`;
+  if (status === 'stopped') return `Остановлено ${idx}/${total}`;
+  if (status === 'done') return `✅ Завершено: ${total}/${total}`;
+  if (status === 'error') return `Ошибка${err}`;
+  return 'Ready';
+}
 

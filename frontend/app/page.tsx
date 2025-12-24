@@ -86,14 +86,14 @@ export default function HomePage() {
 
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-xs font-bold tracking-widest text-indigo-300 uppercase">System Operational v2.0</span>
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs font-bold tracking-widest text-green-300 uppercase">Система работает v2.0</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8 leading-[1.1]">
-            Automate Your <br />
+            Автоматизируйте свой <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
-              Creative Workflow
+              Творческий процесс
             </span>
           </h1>
 
@@ -198,7 +198,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Card 1 */}
             <div className="p-8 rounded-[32px] bg-[#0a0a0a] border border-white/10 flex flex-col">
-              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Starter</h3>
+              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Стартовый</h3>
               <div className="text-4xl font-bold text-white mb-2">€3</div>
               <p className="text-gray-500 text-sm mb-8">Идеально для пробы</p>
               
@@ -221,9 +221,9 @@ export default function HomePage() {
             {/* Card 2 - Featured */}
             <div className="p-8 rounded-[32px] bg-[#121212] border border-indigo-500/50 relative shadow-[0_0_50px_rgba(79,70,229,0.1)] flex flex-col transform md:-translate-y-4">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-                Popular
+                Популярный
               </div>
-              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Pro</h3>
+              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Про</h3>
               <div className="text-4xl font-bold text-white mb-2">€10</div>
               <p className="text-gray-500 text-sm mb-8">Для активных креаторов</p>
               
@@ -239,13 +239,13 @@ export default function HomePage() {
               </ul>
               
               <Link href="/register" className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-center transition-colors">
-                Выбрать Pro
+                Выбрать Про
               </Link>
             </div>
 
             {/* Card 3 */}
             <div className="p-8 rounded-[32px] bg-[#0a0a0a] border border-white/10 flex flex-col">
-              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Ultimate</h3>
+              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Максимальный</h3>
               <div className="text-4xl font-bold text-white mb-2">€17</div>
               <p className="text-gray-500 text-sm mb-8">Максимальная выгода</p>
               

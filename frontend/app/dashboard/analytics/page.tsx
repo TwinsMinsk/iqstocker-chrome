@@ -68,16 +68,16 @@ export default function AnalyticsPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <header className="mb-12">
-        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Metrics</h1>
+        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Метрики</h1>
         <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase">
-          Usage <span className="text-white/20 tracking-normal italic">Analytics</span>
+          Аналитика <span className="text-white/20 tracking-normal italic">использования</span>
         </h2>
       </header>
 
       {/* Общая статистика */}
       <div className="grid md:grid-cols-3 gap-8 mb-12">
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 relative overflow-hidden group">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4">Total Prompts</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4">Всего промптов</div>
           <div className="text-5xl font-black text-white tracking-tighter">
             {stats.total_prompts.toLocaleString()}
           </div>
@@ -85,17 +85,17 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 relative overflow-hidden group">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4">Successful</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4">Успешно</div>
           <div className="text-5xl font-black text-green-400 tracking-tighter">
             {stats.successful.toLocaleString()}
           </div>
           <div className="text-[10px] font-bold text-green-400/40 mt-2 uppercase tracking-widest">
-            {successRate}% Efficiency
+            {successRate}% Эффективность
           </div>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 relative overflow-hidden group">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4">Failed</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4">Ошибка</div>
           <div className="text-5xl font-black text-red-400 tracking-tighter">
             {stats.failed.toLocaleString()}
           </div>
@@ -104,14 +104,14 @@ export default function AnalyticsPage() {
 
       {/* График за последние 7 дней */}
       <div className="bg-black/40 border border-white/10 rounded-[40px] p-10 shadow-2xl">
-        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-10 border-b border-white/5 pb-6">Activity (Last 7 Days)</h3>
+        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-10 border-b border-white/5 pb-6">Активность (последние 7 дней)</h3>
         
         <div className="space-y-6">
           {stats.last_7_days.map((day) => {
             const percentage = (day.count / maxCount) * 100;
             const date = new Date(day.date);
-            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-            const dayDate = date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+            const dayName = date.toLocaleDateString('ru-RU', { weekday: 'short' });
+            const dayDate = date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
             
             return (
               <div key={day.date} className="flex items-center gap-6">
@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
       <div className="mt-12 p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl flex items-center gap-4">
         <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400">💡</div>
         <p className="text-xs font-bold text-indigo-400/60 uppercase tracking-[0.1em]">
-          Detailed session logs are available in the Admin Control Panel.
+          Подробные журналы сессий доступны в панели управления администратора.
         </p>
       </div>
     </div>

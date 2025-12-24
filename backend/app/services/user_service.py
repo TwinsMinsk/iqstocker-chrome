@@ -59,7 +59,9 @@ class UserService:
         # Подготовить данные
         balance_credits = subscription.credits_balance if subscription else 0
         # Примерная стоимость: €0.003 за кредит
-        eur_equivalent = Decimal(balance_credits) * Decimal("0.003")
+        # Округляем до 2 знаков после запятой для валидации
+        from decimal import ROUND_HALF_UP
+        eur_equivalent = (Decimal(balance_credits) * Decimal("0.003")).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         
         balance_info = BalanceInfo(
             credits=balance_credits,

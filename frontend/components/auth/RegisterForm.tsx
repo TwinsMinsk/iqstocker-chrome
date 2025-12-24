@@ -78,8 +78,8 @@ export function RegisterForm() {
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl -z-10"></div>
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 blur-3xl -z-10"></div>
 
-      <h2 className="text-4xl font-black mb-2 text-center text-white tracking-tighter uppercase">Register</h2>
-      <p className="text-white/30 text-center text-sm mb-10 font-medium uppercase tracking-widest">Create your account</p>
+      <h2 className="text-4xl font-black mb-2 text-center text-white tracking-tighter uppercase">Регистрация</h2>
+      <p className="text-white/30 text-center text-sm mb-10 font-medium uppercase tracking-widest">Создайте свой аккаунт</p>
 
       {error && (
         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-2xl text-center uppercase tracking-widest">
@@ -90,7 +90,7 @@ export function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 ml-4">
-            Email Address
+            Email адрес
           </label>
           <input
             id="email"
@@ -105,7 +105,7 @@ export function RegisterForm() {
 
         <div>
           <label htmlFor="password" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 ml-4">
-            Password
+            Пароль
           </label>
           <input
             id="password"
@@ -115,7 +115,7 @@ export function RegisterForm() {
             required
             minLength={8}
             className="w-full px-6 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-white/10 transition-all font-medium"
-            placeholder="Min. 8 characters"
+            placeholder="Мин. 8 символов"
           />
         </div>
 
@@ -124,7 +124,7 @@ export function RegisterForm() {
             htmlFor="confirmPassword"
             className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 ml-4"
           >
-            Confirm Password
+            Подтвердите пароль
           </label>
           <input
             id="confirmPassword"
@@ -133,7 +133,7 @@ export function RegisterForm() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             className="w-full px-6 py-4 bg-black/40 border border-white/10 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-white/10 transition-all font-medium"
-            placeholder="Repeat password"
+            placeholder="Повторите пароль"
           />
         </div>
 
@@ -142,14 +142,14 @@ export function RegisterForm() {
           disabled={isLoading}
           className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(79,70,229,0.3)]"
         >
-          {isLoading ? 'Creating...' : 'Register Now'}
+          {isLoading ? 'Создание...' : 'Зарегистрироваться'}
         </button>
       </form>
 
       <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-widest text-white/20">
-        Already registered?{' '}
+        Уже зарегистрированы?{' '}
         <Link href="/login" className="text-indigo-400 hover:text-indigo-300 ml-2">
-          Sign In
+          Войти
         </Link>
       </p>
     </div>

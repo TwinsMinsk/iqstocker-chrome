@@ -85,10 +85,10 @@ export default function PaymentHistoryPage() {
     };
 
     const labels = {
-      completed: 'Completed',
-      pending: 'Pending',
-      failed: 'Failed',
-      refunded: 'Refunded',
+      completed: 'Завершено',
+      pending: 'В ожидании',
+      failed: 'Ошибка',
+      refunded: 'Возврат',
     };
 
     return (
@@ -122,9 +122,9 @@ export default function PaymentHistoryPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <header className="mb-12">
-        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Ledger</h1>
+        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Журнал</h1>
         <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-none">
-          Payment <span className="text-white/20 tracking-normal italic">History</span>
+          История <span className="text-white/20 tracking-normal italic">платежей</span>
         </h2>
       </header>
 
@@ -132,16 +132,16 @@ export default function PaymentHistoryPage() {
         <div className="bg-white/5 border border-white/10 rounded-[40px] p-20 text-center">
           <div className="text-indigo-500 text-6xl mb-8 opacity-20">💳</div>
           <h3 className="text-2xl font-black mb-4 text-white uppercase tracking-tighter">
-            No transactions found
+            Транзакции не найдены
           </h3>
           <p className="text-white/30 mb-10 max-w-sm mx-auto font-light leading-relaxed">
-            Your payment history is empty. Purchase a plan to start your automation journey.
+            Ваша история платежей пуста. Купите тариф, чтобы начать автоматизацию.
           </p>
           <Link
             href="/dashboard/billing"
             className="inline-block px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-[0_0_30px_rgba(79,70,229,0.3)]"
           >
-            Purchase Plan
+            Купить тариф
           </Link>
         </div>
       ) : (
@@ -150,12 +150,12 @@ export default function PaymentHistoryPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-white/5 border-b border-white/5">
-                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Date</th>
-                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Plan</th>
-                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Credits</th>
-                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Amount</th>
-                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Status</th>
-                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Reference</th>
+                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Дата</th>
+                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Тариф</th>
+                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Кредиты</th>
+                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Сумма</th>
+                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Статус</th>
+                  <th className="px-8 py-6 text-left text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">ID</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -165,7 +165,7 @@ export default function PaymentHistoryPage() {
                       {formatDate(transaction.created_at)}
                     </td>
                     <td className="px-8 py-6">
-                      <span className="text-xs font-black text-white uppercase tracking-widest">{transaction.plan_name}</span>
+                      <span className="text-xs font-black text-white uppercase tracking-widest">{transaction.plan_name === 'STANDARD' ? 'СТАНДАРТНЫЙ' : transaction.plan_name === 'BASIC' ? 'БАЗОВЫЙ' : transaction.plan_name === 'PRO' ? 'ПРО' : transaction.plan_name}</span>
                     </td>
                     <td className="px-8 py-6">
                       <span className="text-xs font-black text-indigo-400">+{transaction.credits_amount.toLocaleString()}</span>
@@ -190,11 +190,11 @@ export default function PaymentHistoryPage() {
       {/* Информационная панель */}
       <div className="mt-12 p-8 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl flex items-center justify-between">
         <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.2em]">
-          Support: help@iqstocker.auto
+          Поддержка: help@iqstocker.auto
         </p>
         <div className="flex gap-4">
            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>
-           <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Ledger Active</span>
+           <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Журнал активен</span>
         </div>
       </div>
     </div>

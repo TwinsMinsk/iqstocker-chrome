@@ -28,9 +28,9 @@ export default function DashboardPage() {
     <div className="min-h-screen pt-12 pb-20">
       <div className="container mx-auto px-4">
         <header className="mb-12">
-          <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Workspace</h1>
+          <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Рабочая область</h1>
           <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-            WELCOME BACK,<br/>
+            С ВОЗВРАЩЕНИЕМ,<br/>
             <span className="text-white/40">{user?.email?.split('@')[0].toUpperCase()}</span>
           </h2>
         </header>
@@ -50,7 +50,7 @@ export default function DashboardPage() {
         </div>
         
         <footer className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-white/20 uppercase tracking-[0.2em]">
-           <div>Status: All Systems Operational</div>
+           <div>Статус: Все системы работают</div>
            <div>IQStocker Auto v1.0.0</div>
         </footer>
       </div>

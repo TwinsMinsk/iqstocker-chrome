@@ -27,7 +27,8 @@ export async function generateFingerprint(): Promise<string> {
   const components = [
     navigator.userAgent,
     navigator.language,
-    `${screen.width}x${screen.height}`,
+    // В MV3 service worker может не быть screen. Делаем безопасный fallback.
+    typeof screen !== 'undefined' ? `${screen.width}x${screen.height}` : 'screen:unknown',
     new Date().getTimezoneOffset().toString(),
     navigator.hardwareConcurrency?.toString() || 'unknown',
     // НЕ используем canvas fingerprinting (слишком инвазивно)
@@ -57,7 +58,8 @@ export function getDeviceInfo(): DeviceInfo {
   return {
     os: getOS(),
     browser: getBrowser(),
-    screen_resolution: `${screen.width}x${screen.height}`,
+    screen_resolution:
+      typeof screen !== 'undefined' ? `${screen.width}x${screen.height}` : 'unknown',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     language: navigator.language,
     hardware_concurrency: navigator.hardwareConcurrency || 0

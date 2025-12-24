@@ -16,28 +16,28 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Product</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Продукт</h4>
             <ul className="space-y-4 text-[10px] font-bold uppercase tracking-widest">
-              <li><Link href="/#features" className="text-white/40 hover:text-white transition-colors">Features</Link></li>
-              <li><Link href="/#pricing" className="text-white/40 hover:text-white transition-colors">Pricing</Link></li>
+              <li><Link href="/#features" className="text-white/40 hover:text-white transition-colors">Возможности</Link></li>
+              <li><Link href="/#pricing" className="text-white/40 hover:text-white transition-colors">Тарифы</Link></li>
               <li><Link href="/#faq" className="text-white/40 hover:text-white transition-colors">FAQ</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Support</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Поддержка</h4>
             <ul className="space-y-4 text-[10px] font-bold uppercase tracking-widest">
-              <li><Link href="/docs" className="text-white/40 hover:text-white transition-colors">Documentation</Link></li>
-              <li><Link href="/contact" className="text-white/40 hover:text-white transition-colors">Contact</Link></li>
+              <li><Link href="/docs" className="text-white/40 hover:text-white transition-colors">Документация</Link></li>
+              <li><Link href="/contact" className="text-white/40 hover:text-white transition-colors">Контакты</Link></li>
               <li><Link href="https://t.me/your_support" className="text-white/40 hover:text-white transition-colors">Telegram</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Legal</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Юридическая информация</h4>
             <ul className="space-y-4 text-[10px] font-bold uppercase tracking-widest">
-              <li><Link href="/privacy" className="text-white/40 hover:text-white transition-colors">Privacy</Link></li>
-              <li><Link href="/terms" className="text-white/40 hover:text-white transition-colors">Terms</Link></li>
+              <li><Link href="/privacy" className="text-white/40 hover:text-white transition-colors">Конфиденциальность</Link></li>
+              <li><Link href="/terms" className="text-white/40 hover:text-white transition-colors">Условия</Link></li>
             </ul>
           </div>
         </div>
@@ -49,7 +49,7 @@ export function Footer() {
           <div className="flex gap-8 items-center">
              <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Operational</span>
+                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Работает</span>
              </div>
           </div>
         </div>

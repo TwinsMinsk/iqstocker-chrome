@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     DEFAULT_MAX_INTERVAL_MS: int = 300000  # 5 minutes
     DEFAULT_MAX_RETRIES: int = 3
     
+    # Version check (optional)
+    MIN_VERSION_REQUIRED: str | None = None  # Минимальная версия расширения (например "1.0.1")
+    
+    # Remote selector (optional)
+    DISCORD_INPUT_SELECTOR: str | None = None  # Селектор поля ввода Discord с сервера
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -17,10 +17,10 @@ export function ExtensionDownload() {
       <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(79,70,229,0.1),transparent)]"></div>
       
       <div className="max-w-xl relative z-10">
-        <h3 className="text-xs font-black tracking-[0.4em] text-indigo-400 uppercase mb-6">Toolkit</h3>
+        <h3 className="text-xs font-black tracking-[0.4em] text-indigo-400 uppercase mb-6">Инструментарий</h3>
         <h4 className="text-4xl md:text-6xl font-black text-white mb-8 tracking-tighter uppercase leading-[0.8]">
           Chrome<br/>
-          <span className="text-white/20 tracking-[-0.05em]">Extension</span>
+          <span className="text-white/20 tracking-[-0.05em]">Расширение</span>
         </h4>
         <p className="text-lg text-white/40 font-light leading-relaxed mb-10 max-w-md">
           Скачайте расширение IQStocker Auto. Автоматизируйте Discord без лимитов напрямую из браузера.
@@ -32,13 +32,13 @@ export function ExtensionDownload() {
              className="group px-10 py-5 bg-white text-black rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-50 transition-all flex items-center gap-4 shadow-2xl shadow-white/5"
            >
               <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-              Download ZIP
+              Скачать ZIP
            </button>
            <button 
              onClick={() => handleDownload('exe')}
              className="px-10 py-5 bg-white/5 border border-white/10 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
            >
-              Download EXE
+              Скачать EXE
            </button>
         </div>
       </div>

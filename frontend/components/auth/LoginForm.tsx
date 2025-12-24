@@ -58,8 +58,8 @@ export function LoginForm() {
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl -z-10"></div>
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 blur-3xl -z-10"></div>
 
-      <h2 className="text-4xl font-black mb-2 text-center text-white tracking-tighter uppercase">Welcome</h2>
-      <p className="text-white/30 text-center text-sm mb-10 font-medium uppercase tracking-widest">Sign in to continue</p>
+      <h2 className="text-4xl font-black mb-2 text-center text-white tracking-tighter uppercase">Вход</h2>
+      <p className="text-white/30 text-center text-sm mb-10 font-medium uppercase tracking-widest">Авторизуйтесь, чтобы продолжить</p>
 
       {error && (
         <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-2xl text-center uppercase tracking-widest">
@@ -70,7 +70,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 ml-4">
-            Email Address
+            Email адрес
           </label>
           <input
             id="email"
@@ -85,7 +85,7 @@ export function LoginForm() {
 
         <div>
           <label htmlFor="password" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 ml-4">
-            Password
+            Пароль
           </label>
           <input
             id="password"
@@ -103,7 +103,7 @@ export function LoginForm() {
           disabled={isLoading}
           className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(79,70,229,0.3)]"
         >
-          {isLoading ? 'Processing...' : 'Authorize'}
+          {isLoading ? 'Загрузка...' : 'Войти'}
         </button>
       </form>
 
@@ -113,7 +113,7 @@ export function LoginForm() {
             <div className="w-full border-t border-white/5"></div>
           </div>
           <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-            <span className="px-4 bg-[#0a0a0f] text-white/20">Third Party</span>
+            <span className="px-4 bg-[#0a0a0f] text-white/20">Сторонние сервисы</span>
           </div>
         </div>
 
@@ -139,14 +139,14 @@ export function LoginForm() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          Google Auth
+          Google Вход
         </button>
       </div>
 
       <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-widest text-white/20">
-        New here?{' '}
+        Впервые здесь?{' '}
         <Link href="/register" className="text-indigo-400 hover:text-indigo-300 ml-2">
-          Create Account
+          Создать аккаунт
         </Link>
       </p>
     </div>

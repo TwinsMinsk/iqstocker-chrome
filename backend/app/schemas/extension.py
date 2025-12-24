@@ -38,6 +38,14 @@ class FinalizeSessionRequest(BaseModel):
     duration_seconds: Optional[int] = Field(None, ge=0)
 
 
+class DeductCreditRequest(BaseModel):
+    """
+    Списание кредита за успешно отправленный промпт
+    """
+    session_token: str = Field(..., min_length=32, max_length=256)
+    prompt_index: int = Field(..., ge=0, description="Индекс промпта в сессии")
+
+
 class BindLicenseRequest(BaseModel):
     """
     Привязка лицензии к устройству (fingerprinting)
@@ -79,6 +87,7 @@ class ExtensionConfig(BaseModel):
     min_interval_ms: int = Field(default=60000, description="Минимальный интервал между промптами")
     max_interval_ms: int = Field(default=300000, description="Максимальный интервал")
     max_retries: int = Field(default=3, description="Максимум попыток при ошибке")
+    discord_input_selector: Optional[str] = Field(None, description="Remote селектор поля ввода Discord (опционально)")
 
 
 class BatchValidateResponse(BaseModel):
@@ -96,6 +105,7 @@ class BatchValidateResponse(BaseModel):
     # Дополнительная информация
     credits_reserved: Optional[int] = None
     credits_remaining: Optional[int] = None
+    min_version_required: Optional[str] = Field(None, description="Минимальная версия расширения (опционально)")
 
 
 class FinalizeSessionResponse(BaseModel):
@@ -105,6 +115,14 @@ class FinalizeSessionResponse(BaseModel):
     credits_used: int
     credits_remaining: int
     session_duration_seconds: Optional[int] = None
+
+
+class DeductCreditResponse(BaseModel):
+    """Response для списания кредита"""
+    success: bool
+    message: str
+    credits_remaining: int
+    credits_deducted: int = 1
 
 
 class BindLicenseResponse(BaseModel):
@@ -139,6 +157,7 @@ class SessionData(BaseModel):
     reserved_credits: int
     created_at: datetime
     is_finalized: bool = False
+    credits_deducted: int = 0  # Сколько кредитов уже списано
 
 
 class DeviceBinding(BaseModel):
@@ -147,4 +166,3 @@ class DeviceBinding(BaseModel):
     device_info: Optional[Dict[str, str]]
     bound_at: datetime
     last_used: Optional[datetime]
-

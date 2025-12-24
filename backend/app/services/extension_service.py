@@ -144,10 +144,9 @@ class ExtensionService:
                     "message": "Too many batch requests, try again in a minute"
                 }
         
-        # 5. Reserve credits (оптимистичная блокировка)
-        subscription.credits_balance -= prompts_count
-        subscription.used_this_month += prompts_count
-        self.db.commit()
+        # 5. НЕ списываем кредиты здесь! Только проверяем баланс.
+        # Кредиты будут списываться при успешной отправке каждого промпта в finalize_session.
+        # Это гарантирует, что списываются только успешно отправленные промпты.
         
         # 6. Generate session token
         session_token = self._generate_session_token(str(user.id), prompts_count)
@@ -158,9 +157,11 @@ class ExtensionService:
                 "user_id": str(user.id),
                 "license_key_id": str(license_obj.id),
                 "prompts_count": prompts_count,
-                "reserved_credits": prompts_count,
+                "reserved_credits": 0,  # Не резервируем, списываем только при успешной отправке
                 "created_at": datetime.utcnow().isoformat(),
-                "is_finalized": False
+                "is_finalized": False,
+                "credits_deducted": 0,  # Счетчик списанных кредитов
+                "deducted_prompts": []  # Список индексов промптов, за которые уже списаны кредиты
             }
             
             await self.redis.setex(
@@ -177,17 +178,123 @@ class ExtensionService:
             )
         
         # 8. Return success response
+        config_dict = {
+            "min_interval_ms": settings.DEFAULT_MIN_INTERVAL_MS,
+            "max_interval_ms": settings.DEFAULT_MAX_INTERVAL_MS,
+            "max_retries": settings.DEFAULT_MAX_RETRIES
+        }
+        
+        # Добавить remote selector если настроен
+        if settings.DISCORD_INPUT_SELECTOR:
+            config_dict["discord_input_selector"] = settings.DISCORD_INPUT_SELECTOR
+        
         return {
             "allowed": True,
             "session_token": session_token,
             "expires_at": datetime.utcnow() + timedelta(hours=settings.SESSION_TOKEN_TTL_HOURS),
-            "config": {
-                "min_interval_ms": settings.DEFAULT_MIN_INTERVAL_MS,
-                "max_interval_ms": settings.DEFAULT_MAX_INTERVAL_MS,
-                "max_retries": settings.DEFAULT_MAX_RETRIES
-            },
-            "credits_reserved": prompts_count,
-            "credits_remaining": subscription.credits_balance
+            "config": config_dict,
+            "credits_reserved": 0,  # Не резервируем, списываем только при успешной отправке
+            "credits_remaining": subscription.credits_balance,  # Текущий баланс без изменений
+            "min_version_required": settings.MIN_VERSION_REQUIRED  # Опционально, может быть None
+        }
+    
+    
+    async def deduct_credit(
+        self,
+        session_token: str,
+        prompt_index: int
+    ) -> Dict:
+        """
+        Списать один кредит за успешно отправленный промпт.
+        
+        Вызывается сразу после успешной отправки промпта в Discord.
+        Кредиты списываются только при успешной отправке, не при ошибках.
+        
+        Args:
+            session_token: Token сессии
+            prompt_index: Индекс промпта в сессии (0-based)
+        
+        Returns:
+            Dict с результатом списания
+        """
+        if not self.redis:
+            return {
+                "success": False,
+                "message": "Redis not available"
+            }
+        
+        # 1. Получить session data из Redis
+        session_key = f"session:{session_token}"
+        session_json = await self.redis.get(session_key)
+        
+        if not session_json:
+            return {
+                "success": False,
+                "message": "Session not found or expired"
+            }
+        
+        session_data = json.loads(session_json)
+        
+        # Проверить, не финализирована ли уже сессия
+        if session_data.get("is_finalized"):
+            return {
+                "success": False,
+                "message": "Session already finalized"
+            }
+        
+        # Проверить, не списан ли уже кредит за этот промпт
+        deducted_prompts = session_data.get("deducted_prompts", [])
+        if prompt_index in deducted_prompts:
+            # Кредит уже списан - это нормально при повторных вызовах
+            subscription = self.db.query(Subscription).filter(
+                Subscription.user_id == session_data["user_id"]
+            ).first()
+            return {
+                "success": True,
+                "message": "Credit already deducted for this prompt",
+                "credits_remaining": subscription.credits_balance if subscription else 0,
+                "credits_deducted": 0
+            }
+        
+        # 2. Получить подписку
+        subscription = self.db.query(Subscription).filter(
+            Subscription.user_id == session_data["user_id"]
+        ).first()
+        
+        if not subscription:
+            return {
+                "success": False,
+                "message": "Subscription not found"
+            }
+        
+        # 3. Проверить баланс перед списанием
+        if subscription.credits_balance < 1:
+            return {
+                "success": False,
+                "message": f"Insufficient credits. Need 1, have {subscription.credits_balance}"
+            }
+        
+        # 4. Списать один кредит
+        subscription.credits_balance -= 1
+        subscription.used_this_month += 1
+        self.db.commit()
+        
+        # 5. Обновить session data - отметить что кредит списан за этот промпт
+        deducted_prompts.append(prompt_index)
+        session_data["deducted_prompts"] = deducted_prompts
+        session_data["credits_deducted"] = session_data.get("credits_deducted", 0) + 1
+        
+        await self.redis.setex(
+            session_key,
+            settings.SESSION_TOKEN_TTL_HOURS * 3600,
+            json.dumps(session_data)
+        )
+        
+        return {
+            "success": True,
+            "message": "Credit deducted successfully",
+            "credits_remaining": subscription.credits_balance,
+            "credits_deducted": 1
         }
     
     
@@ -200,6 +307,9 @@ class ExtensionService:
     ) -> Dict:
         """
         Финализация сессии - подтверждение использования.
+        
+        ВАЖНО: Кредиты уже списаны через deduct_credit при успешной отправке каждого промпта.
+        Этот метод только финализирует сессию и не списывает кредиты повторно.
         
         Args:
             session_token: Token сессии
@@ -234,7 +344,7 @@ class ExtensionService:
                 "message": "Session already finalized"
             }
         
-        # 2. Получить подписку
+        # 2. Получить подписку для возврата баланса
         subscription = self.db.query(Subscription).filter(
             Subscription.user_id == session_data["user_id"]
         ).first()
@@ -245,15 +355,9 @@ class ExtensionService:
                 "message": "Subscription not found"
             }
         
-        # 3. Корректировка кредитов (если отправлено меньше чем зарезервировано)
-        reserved = session_data["reserved_credits"]
-        difference = reserved - prompts_sent
-        
-        if difference > 0:
-            # Вернуть неиспользованные кредиты
-            subscription.credits_balance += difference
-            subscription.used_this_month -= difference
-            self.db.commit()
+        # 3. Кредиты уже списаны через deduct_credit при успешной отправке каждого промпта
+        # Здесь только финализируем сессию
+        credits_deducted = session_data.get("credits_deducted", 0)
         
         # 4. Пометить сессию как finalized
         session_data["is_finalized"] = True
@@ -270,7 +374,7 @@ class ExtensionService:
         return {
             "success": True,
             "message": "Session finalized successfully",
-            "credits_used": prompts_sent,
+            "credits_used": credits_deducted,  # Используем фактически списанные кредиты
             "credits_remaining": subscription.credits_balance,
             "session_duration_seconds": duration_seconds
         }

@@ -108,14 +108,6 @@ export async function startAutomation(
     // ==================== STEP 1: BATCH VALIDATION ====================
     onProgress?.(0, prompts.length, 'Validating license...');
     
-    // Проверить offline режим
-    const settings = await chrome.storage.local.get('offline_mode');
-    const isOfflineMode = settings.offline_mode;
-    
-    if (isOfflineMode) {
-      console.log('⚠️ Running in offline mode - API calls will be skipped');
-    }
-    
     const session = await apiClient.batchValidate(licenseKey, prompts.length);
     
     if (!session.allowed) {

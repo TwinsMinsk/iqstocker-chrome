@@ -11,6 +11,7 @@ from app.schemas.extension import (
     ValidateKeyRequest, ValidateKeyResponse,
     BatchValidateRequest, BatchValidateResponse,
     FinalizeSessionRequest, FinalizeSessionResponse,
+    DeductCreditRequest, DeductCreditResponse,
     BindLicenseRequest, BindLicenseResponse,
     LogUsageRequest, LogUsageResponse,
     BalanceResponse
@@ -108,6 +109,38 @@ async def batch_validate(
     )
 
 
+@router.post("/deduct-credit", response_model=DeductCreditResponse)
+async def deduct_credit(
+    request: DeductCreditRequest,
+    db: Session = Depends(get_db),
+    redis_client = Depends(get_redis_client)
+):
+    """
+    Списать один кредит за успешно отправленный промпт.
+    
+    Вызывается сразу после успешной отправки промпта в Discord.
+    Кредиты списываются только при успешной отправке, не при ошибках.
+    
+    ВАЖНО: Этот endpoint должен вызываться только после подтверждения успешной отправки.
+    """
+    service = get_extension_service(db, redis_client)
+    
+    result = await service.deduct_credit(
+        session_token=request.session_token,
+        prompt_index=request.prompt_index
+    )
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message"))
+    
+    return DeductCreditResponse(
+        success=True,
+        message=result["message"],
+        credits_remaining=result["credits_remaining"],
+        credits_deducted=result.get("credits_deducted", 1)
+    )
+
+
 @router.post("/finalize-session", response_model=FinalizeSessionResponse)
 async def finalize_session(
     request: FinalizeSessionRequest,
@@ -118,7 +151,9 @@ async def finalize_session(
     Финализация сессии - подтверждение использования кредитов.
     
     Вызывается после завершения работы расширения.
-    Корректирует кредиты если отправлено меньше промптов чем зарезервировано.
+    
+    ВАЖНО: Кредиты уже списаны через /deduct-credit при успешной отправке каждого промпта.
+    Этот endpoint только финализирует сессию и не списывает кредиты повторно.
     """
     service = get_extension_service(db, redis_client)
     

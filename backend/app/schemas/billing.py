@@ -1,7 +1,7 @@
 """
 Pydantic схемы для billing и подписок
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
@@ -11,12 +11,35 @@ class PlanResponse(BaseModel):
     """Схема плана подписки"""
     id: str
     name: str
-    price_eur: Decimal = Field(..., decimal_places=2)
+    price_eur: Decimal = Field(..., description="Цена в EUR с точностью до 2 знаков")
     credits: int
-    price_per_credit: Optional[Decimal] = Field(None, decimal_places=4)
+    price_per_credit: Optional[Decimal] = Field(None, description="Цена за кредит с точностью до 4 знаков")
     duration_days: Optional[int] = None
     discount_percent: Optional[int] = None
     description: str
+    
+    @field_validator('price_eur')
+    @classmethod
+    def validate_price_eur(cls, v: Decimal) -> Decimal:
+        """Проверка количества знаков после запятой (максимум 2)"""
+        str_value = str(v)
+        if '.' in str_value:
+            decimal_part = str_value.split('.')[1]
+            if len(decimal_part) > 2:
+                raise ValueError('price_eur должен иметь максимум 2 знака после запятой')
+        return v
+    
+    @field_validator('price_per_credit')
+    @classmethod
+    def validate_price_per_credit(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        """Проверка количества знаков после запятой (максимум 4)"""
+        if v is not None:
+            str_value = str(v)
+            if '.' in str_value:
+                decimal_part = str_value.split('.')[1]
+                if len(decimal_part) > 4:
+                    raise ValueError('price_per_credit должен иметь максимум 4 знака после запятой')
+        return v
     
     class Config:
         from_attributes = True
@@ -32,22 +55,44 @@ class PurchasePlanResponse(BaseModel):
     payment_id: str
     payment_url: str
     plan: str
-    amount: Decimal = Field(..., decimal_places=2)
+    amount: Decimal = Field(..., description="Сумма с точностью до 2 знаков")
     currency: str = "EUR"
     expires_at: datetime
+    
+    @field_validator('amount')
+    @classmethod
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        """Проверка количества знаков после запятой (максимум 2)"""
+        str_value = str(v)
+        if '.' in str_value:
+            decimal_part = str_value.split('.')[1]
+            if len(decimal_part) > 2:
+                raise ValueError('amount должен иметь максимум 2 знака после запятой')
+        return v
 
 
 class TransactionResponse(BaseModel):
     """Схема транзакции"""
     id: str
     type: str  # 'purchase', 'refund', 'usage'
-    amount: Decimal = Field(..., decimal_places=2)
+    amount: Decimal = Field(..., description="Сумма с точностью до 2 знаков")
     currency: str = "EUR"
     credits: int
     status: str  # 'pending', 'completed', 'failed'
     plan: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
+    
+    @field_validator('amount')
+    @classmethod
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        """Проверка количества знаков после запятой (максимум 2)"""
+        str_value = str(v)
+        if '.' in str_value:
+            decimal_part = str_value.split('.')[1]
+            if len(decimal_part) > 2:
+                raise ValueError('amount должен иметь максимум 2 знака после запятой')
+        return v
     
     class Config:
         from_attributes = True

@@ -32,6 +32,21 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'Успешно';
+      case 'completed':
+        return 'Завершено';
+      case 'error':
+        return 'Ошибка';
+      case 'paused':
+        return 'Пауза';
+      default:
+        return status;
+    }
+  };
+
   const getErrorTypeColor = (errorType: string | null) => {
     if (!errorType) return '';
     switch (errorType) {
@@ -43,6 +58,20 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
         return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getErrorTypeLabel = (errorType: string | null) => {
+    if (!errorType) return '';
+    switch (errorType) {
+      case 'rate_limit':
+        return 'Лимит запросов';
+      case 'network_error':
+        return 'Ошибка сети';
+      case 'invalid_prompt':
+        return 'Неверный промпт';
+      default:
+        return errorType;
     }
   };
 
@@ -136,7 +165,7 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
                       log.status
                     )}`}
                   >
-                    {log.status}
+                    {getStatusLabel(log.status)}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -155,7 +184,7 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
                           log.error_type
                         )}`}
                       >
-                        {log.error_type}
+                        {getErrorTypeLabel(log.error_type)}
                       </span>
                       {log.error_message && (
                         <div className="text-xs text-gray-500 mt-1 max-w-xs truncate">

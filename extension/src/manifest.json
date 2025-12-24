@@ -5,12 +5,13 @@
   "description": "Автоматизируй отправку промптов в Midjourney через Discord",
   "permissions": [
     "storage",
-    "webRequest",
     "tabs",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "host_permissions": [
-    "https://discord.com/*"
+    "https://discord.com/*",
+    "http://localhost:8000/api/v1/*"
   ],
   "action": {
     "default_popup": "popup.html",

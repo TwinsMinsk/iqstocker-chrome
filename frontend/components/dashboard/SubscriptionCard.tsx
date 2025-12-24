@@ -19,14 +19,14 @@ export function SubscriptionCard() {
   }
 
   const planNames: Record<string, string> = {
-    free: 'FREE',
-    plan_basic: 'BASIC',
-    plan_standard: 'STANDARD',
-    plan_pro: 'PRO',
+    free: 'БЕСПЛАТНЫЙ',
+    plan_basic: 'БАЗОВЫЙ',
+    plan_standard: 'СТАНДАРТНЫЙ',
+    plan_pro: 'ПРО',
   };
 
-  const planName = planNames[subscription?.plan_id || 'free'] || 'FREE';
-  const isFree = planName === 'FREE';
+  const planName = planNames[subscription?.plan_id || 'free'] || 'БЕСПЛАТНЫЙ';
+  const isFree = planName === 'БЕСПЛАТНЫЙ';
 
   return (
     <div className={`rounded-3xl p-8 border transition-all duration-300 ${
@@ -36,7 +36,7 @@ export function SubscriptionCard() {
     }`}>
       <h3 className={`text-xs font-black tracking-[0.2em] uppercase mb-8 ${
         isFree ? 'text-white/30' : 'text-white/60'
-      }`}>Subscription Plan</h3>
+      }`}>Тарифный план</h3>
       
       <div className="flex items-center justify-between mb-8">
          <span className="text-4xl font-black text-white tracking-tighter uppercase">{planName}</span>
@@ -45,14 +45,14 @@ export function SubscriptionCard() {
               ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
               : 'bg-red-500/10 text-red-400 border border-red-500/20'
          }`}>
-            {subscription?.status === 'active' ? 'Active' : 'Inactive'}
+            {subscription?.status === 'active' ? 'Активен' : 'Неактивен'}
          </span>
       </div>
 
       <div className={`pt-6 border-t ${isFree ? 'border-white/5' : 'border-white/20'}`}>
          {subscription?.subscription_expires_at && (
             <div className={`text-[10px] uppercase tracking-widest font-bold mb-4 ${isFree ? 'text-white/20' : 'text-white/60'}`}>
-              Expires: {new Date(subscription.subscription_expires_at).toLocaleDateString('en-US')}
+              Истекает: {new Date(subscription.subscription_expires_at).toLocaleDateString('ru-RU')}
             </div>
          )}
          <button className={`w-full py-3 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all ${
@@ -60,7 +60,7 @@ export function SubscriptionCard() {
             ? 'bg-white/10 text-white hover:bg-white/20' 
             : 'bg-white text-indigo-600 hover:bg-indigo-50'
          }`}>
-            {isFree ? 'Upgrade Plan' : 'Manage Subscription'}
+            {isFree ? 'Улучшить тариф' : 'Управление подпиской'}
          </button>
       </div>
     </div>

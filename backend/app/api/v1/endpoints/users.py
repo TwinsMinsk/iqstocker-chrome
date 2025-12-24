@@ -136,7 +136,19 @@ async def generate_license_key(
             detail=error
         )
     
-    return LicenseKeyResponse.model_validate(license_key)
+    if not license_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate license key"
+        )
+    
+    # Преобразуем модель LicenseKey в словарь для LicenseKeyResponse
+    return LicenseKeyResponse(
+        id=str(license_key.id),
+        display=license_key.key_display,
+        created_at=license_key.created_at,
+        active=license_key.is_active
+    )
 
 
 @router.delete("/me/license-keys/{key_id}")

@@ -8,6 +8,7 @@ export interface ExtensionConfig {
   min_interval_ms: number;
   max_interval_ms: number;
   max_retries: number;
+  discord_input_selector?: string;  // Remote selector с сервера (опционально)
 }
 
 export interface BatchValidateResponse {
@@ -17,8 +18,16 @@ export interface BatchValidateResponse {
   config?: ExtensionConfig;
   credits_reserved?: number;
   credits_remaining?: number;
+  min_version_required?: string;  // Минимальная версия расширения (опционально)
   error?: string;
   message?: string;
+}
+
+export interface DeductCreditResponse {
+  success: boolean;
+  message: string;
+  credits_remaining: number;
+  credits_deducted: number;
 }
 
 export interface FinalizeSessionResponse {
@@ -40,7 +49,24 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 // Получить API URL из storage или использовать по умолчанию
 async function getApiBaseUrl(): Promise<string> {
   const result = await chrome.storage.local.get('api_base_url');
-  return result.api_base_url || DEFAULT_API_BASE_URL;
+  const candidate: string | undefined = result.api_base_url;
+
+  // Безопасные дефолты:
+  // - Не даём подложить "javascript:" и т.п.
+  // - Требуем http/https
+  // - Требуем, чтобы путь начинался с /api/v1 (иначе легко ошибиться и сломать запросы)
+  if (!candidate || typeof candidate !== 'string') return DEFAULT_API_BASE_URL;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return DEFAULT_API_BASE_URL;
+    if (!url.pathname.startsWith('/api/v1')) return DEFAULT_API_BASE_URL;
+
+    // Нормализуем: убираем trailing slash
+    return candidate.replace(/\/+$/, '');
+  } catch {
+    return DEFAULT_API_BASE_URL;
+  }
 }
 
 /**
@@ -62,24 +88,6 @@ export class ExtensionAPIClient {
     licenseKey: string,
     promptsCount: number
   ): Promise<BatchValidateResponse> {
-    // Проверить offline режим из настроек
-    const settings = await chrome.storage.local.get('offline_mode');
-    if (settings.offline_mode) {
-      console.log('⚠️ Offline mode enabled - skipping API call');
-      // Вернуть моковый response
-      return {
-        allowed: true,
-        session_token: `offline_${Date.now()}`,
-        config: {
-          min_interval_ms: 30000,
-          max_interval_ms: 60000,
-          max_retries: 3
-        },
-        credits_reserved: promptsCount,
-        message: 'Offline mode enabled'
-      };
-    }
-
     try {
       const apiUrl = await getApiBaseUrl();
       const response = await fetch(`${apiUrl}/extensions/batch-validate`, {
@@ -115,10 +123,68 @@ export class ExtensionAPIClient {
   }
   
   /**
+   * Списать один кредит за успешно отправленный промпт
+   * 
+   * Вызывается сразу после успешной отправки промпта в Discord.
+   * Кредиты списываются только при успешной отправке, не при ошибках.
+   * 
+   * @param sessionToken - Token сессии
+   * @param promptIndex - Индекс промпта в сессии (0-based)
+   */
+  async deductCredit(
+    sessionToken: string,
+    promptIndex: number
+  ): Promise<DeductCreditResponse> {
+    try {
+      const apiUrl = await getApiBaseUrl();
+      const response = await fetch(`${apiUrl}/extensions/deduct-credit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          session_token: sessionToken,
+          prompt_index: promptIndex
+        })
+      });
+      
+      if (!response.ok) {
+        // Пытаемся получить детальное сообщение об ошибке от сервера
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {
+          // Если не удалось распарсить JSON, используем статус
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      
+      // Проверяем что сервер вернул success: true
+      if (!result.success) {
+        throw new Error(result.message || 'Server returned success: false');
+      }
+      
+      return result;
+      
+    } catch (error: any) {
+      console.error('Deduct credit failed:', error);
+      
+      // Пробрасываем ошибку дальше для обработки в service-worker
+      throw error;
+    }
+  }
+  
+  /**
    * Финализация сессии
    * 
    * Вызывается после завершения работы.
-   * Корректирует кредиты если отправлено меньше промптов.
+   * 
+   * ВАЖНО: Кредиты уже списаны через deductCredit при успешной отправке каждого промпта.
+   * Этот метод только финализирует сессию.
    * 
    * @param sessionToken - Token сессии
    * @param promptsSent - Фактически отправлено промптов
@@ -131,18 +197,6 @@ export class ExtensionAPIClient {
     errorsCount: number = 0,
     durationSeconds?: number
   ): Promise<FinalizeSessionResponse> {
-    // Пропустить финализацию в offline режиме
-    const settings = await chrome.storage.local.get('offline_mode');
-    if (settings.offline_mode || sessionToken.startsWith('offline_')) {
-      console.log('⚠️ Offline mode - skipping finalize session');
-      return {
-        success: true,
-        message: 'Offline mode - session not finalized',
-        credits_used: promptsSent,
-        credits_remaining: 0
-      };
-    }
-
     try {
       const apiUrl = await getApiBaseUrl();
       const response = await fetch(`${apiUrl}/extensions/finalize-session`, {
@@ -277,9 +331,6 @@ export class ExtensionAPIClient {
       console.warn('✅ Using cached permission (valid for ' + 
         Math.round((cached.cached_at + cached.ttl_ms - Date.now()) / 1000) + 's)');
       
-      // Показать предупреждение пользователю
-      this.showOfflineWarning();
-      
       return {
         allowed: true,
         session_token: cached.session_token,
@@ -315,16 +366,6 @@ export class ExtensionAPIClient {
     return result.cached_permission || null;
   }
   
-  /**
-   * Показать предупреждение об offline режиме
-   */
-  private showOfflineWarning(): void {
-    // Отправить сообщение popup для отображения warning
-    chrome.runtime.sendMessage({
-      type: 'OFFLINE_MODE',
-      message: 'Working in offline mode. Will sync when API is available.'
-    });
-  }
 }
 
 // Singleton instance

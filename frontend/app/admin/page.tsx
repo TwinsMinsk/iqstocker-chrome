@@ -107,7 +107,7 @@ export default function AdminPage() {
                         : 'bg-yellow-100 text-yellow-800'
                     }`}
                   >
-                    {log.status}
+                    {log.status === 'success' ? 'Успешно' : log.status === 'completed' ? 'Завершено' : log.status === 'error' ? 'Ошибка' : log.status}
                   </span>
                 </div>
               </div>

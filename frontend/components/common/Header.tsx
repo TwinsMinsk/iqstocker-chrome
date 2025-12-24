@@ -26,8 +26,8 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-10">
-            <Link href="/#features" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Features</Link>
-            <Link href="/#pricing" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Pricing</Link>
+            <Link href="/#features" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Возможности</Link>
+            <Link href="/#pricing" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Тарифы</Link>
             <Link href="/#faq" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">FAQ</Link>
           </nav>
 
@@ -38,13 +38,13 @@ export function Header() {
                   href="/dashboard"
                   className="hidden sm:block text-xs font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"
                 >
-                  Dashboard
+                  Личный кабинет
                 </Link>
                 <button
                   onClick={handleLogout}
                   className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
                 >
-                  Logout
+                  Выйти
                 </button>
               </div>
             ) : (
@@ -53,13 +53,13 @@ export function Header() {
                   href="/login"
                   className="px-6 py-2.5 text-xs font-bold text-white/60 hover:text-white transition-all uppercase tracking-widest"
                 >
-                  Login
+                  Войти
                 </Link>
                 <Link
                   href="/register"
                   className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-all shadow-[0_0_20px_rgba(79,70,229,0.4)] font-black text-[10px] uppercase tracking-widest"
                 >
-                  Join Now
+                  Начать
                 </Link>
               </div>
             )}

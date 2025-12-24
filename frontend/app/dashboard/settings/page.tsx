@@ -112,9 +112,9 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
       <header className="mb-12">
-        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Preferences</h1>
+        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Настройки</h1>
         <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-none">
-          Account <span className="text-white/20 tracking-normal italic">Settings</span>
+          Профиль <span className="text-white/20 tracking-normal italic">аккаунта</span>
         </h2>
       </header>
 
@@ -134,36 +134,36 @@ export default function SettingsPage() {
       <div className="grid md:grid-cols-1 gap-8">
         {/* Информация о аккаунте */}
         <div className="bg-white/5 border border-white/10 rounded-[40px] p-10 relative overflow-hidden">
-          <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-6">Account Profile</h2>
+          <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-6">Профиль аккаунта</h2>
           <div className="space-y-6">
             <div className="flex justify-between items-center group">
               <span className="text-[10px] font-black uppercase tracking-widest text-white/20">UUID</span>
               <span className="font-mono text-xs text-white/60 group-hover:text-white transition-colors">{user?.id}</span>
             </div>
             <div className="flex justify-between items-center group">
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Email Address</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Email адрес</span>
               <span className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{user?.email}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Email Status</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Статус Email</span>
               <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${user?.email_verified ? 'text-green-400 border-green-500/20 bg-green-500/5' : 'text-yellow-400 border-yellow-500/20 bg-yellow-500/5'}`}>
-                {user?.email_verified ? 'Verified' : 'Unverified'}
+                {user?.email_verified ? 'Подтвержден' : 'Не подтвержден'}
               </span>
             </div>
             <div className="flex justify-between items-center group">
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Registered</span>
-              <span className="text-xs font-bold text-white/40 group-hover:text-white transition-colors">{new Date(user?.created_at || '').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Регистрация</span>
+              <span className="text-xs font-bold text-white/40 group-hover:text-white transition-colors">{new Date(user?.created_at || '').toLocaleDateString('ru-RU', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
             </div>
           </div>
         </div>
 
         {/* Изменение Email */}
         <div className="bg-black/40 border border-white/5 rounded-[40px] p-10">
-          <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-6">Update Email</h2>
+          <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-6">Обновить Email</h2>
           <form onSubmit={handleUpdateEmail} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 ml-4">
-                New Email Address
+                Новый Email адрес
               </label>
               <input
                 type="email"
@@ -179,18 +179,18 @@ export default function SettingsPage() {
               disabled={loading}
               className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all disabled:opacity-50"
             >
-              {loading ? 'Processing...' : 'Change Email'}
+              {loading ? 'Загрузка...' : 'Сменить Email'}
             </button>
           </form>
         </div>
 
         {/* Изменение пароля */}
         <div className="bg-black/40 border border-white/5 rounded-[40px] p-10">
-          <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-6">Security Authorization</h2>
+          <h2 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-8 border-b border-white/5 pb-6">Безопасность</h2>
           <form onSubmit={handleChangePassword} className="space-y-6">
             <div>
               <label htmlFor="current-password" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 ml-4">
-                Current Password
+                Текущий пароль
               </label>
               <input
                 type="password"
@@ -204,7 +204,7 @@ export default function SettingsPage() {
             <div className="grid md:grid-cols-2 gap-6">
                <div>
                   <label htmlFor="new-password" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 ml-4">
-                    New Password
+                    Новый пароль
                   </label>
                   <input
                     type="password"
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                </div>
                <div>
                   <label htmlFor="confirm-password" className="block text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 ml-4">
-                    Confirm New Password
+                    Подтвердите новый пароль
                   </label>
                   <input
                     type="password"
@@ -235,23 +235,23 @@ export default function SettingsPage() {
               disabled={loading}
               className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-indigo-500 transition-all shadow-[0_0_30px_rgba(79,70,229,0.3)] disabled:opacity-50"
             >
-              {loading ? 'Processing...' : 'Update Security'}
+              {loading ? 'Загрузка...' : 'Обновить безопасность'}
             </button>
           </form>
         </div>
 
         {/* Удаление аккаунта */}
         <div className="mt-8 p-10 bg-red-500/5 border border-red-500/10 rounded-[40px]">
-          <h2 className="text-sm font-black text-red-400 uppercase tracking-[0.2em] mb-4">Danger Zone</h2>
+          <h2 className="text-sm font-black text-red-400 uppercase tracking-[0.2em] mb-4">Опасная зона</h2>
           <p className="text-xs text-white/30 mb-8 uppercase tracking-widest font-medium leading-relaxed">
-            Deleting your account is permanent. All your data, balance, and history will be wiped from our servers.
+            Удаление аккаунта необратимо. Все ваши данные, баланс и история будут удалены с наших серверов.
           </p>
           <button
             onClick={handleDeleteAccount}
             disabled={loading}
             className="px-8 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/20 transition-all disabled:opacity-50"
           >
-            Terminal Account
+            Удалить аккаунт
           </button>
         </div>
       </div>
