@@ -16,7 +16,8 @@ def tribute_webhook_secret():
 
 def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, monkeypatch):
     """Тест обработки webhook новой подписки от Tribute"""
-    # Установить секрет в настройках
+    # ВАЖНО: Устанавливаем секрет в настройках
+    # monkeypatch автоматически обновит settings во всех модулях, которые его импортировали
     from app.core.config import settings
     monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
     
@@ -41,19 +42,24 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
         }
     }
     
-    # Создать подпись
-    body = json.dumps(webhook_data).encode()
+    # ВАЖНО: Создаем сырое тело запроса и подпись ДО отправки
+    # Используем json.dumps с sort_keys=True для детерминированного порядка
+    body_bytes = json.dumps(webhook_data, sort_keys=True).encode('utf-8')
     signature = hmac.new(
         tribute_webhook_secret.encode(),
-        body,
+        body_bytes,
         hashlib.sha256
     ).hexdigest()
     
-    # Отправить webhook
+    # ВАЖНО: Используем content= вместо json= чтобы отправить точное тело запроса
+    # которое мы использовали для создания подписи
     response = client.post(
         "/api/v1/payments/webhook/tribute",
-        json=webhook_data,
-        headers={"trbt-signature": signature}
+        content=body_bytes,
+        headers={
+            "trbt-signature": signature,
+            "Content-Type": "application/json"
+        }
     )
     
     assert response.status_code == status.HTTP_200_OK
@@ -63,19 +69,26 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
 
 def test_tribute_webhook_invalid_signature(client, tribute_webhook_secret, monkeypatch):
     """Тест webhook с неверной подписью"""
-    from app.core import config
-    monkeypatch.setattr(config.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    # ВАЖНО: Устанавливаем секрет в настройках
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
     
     webhook_data = {
         "name": "new_subscription",
         "payload": {}
     }
     
+    # ВАЖНО: Создаем правильное тело запроса, но используем неверную подпись
+    body_bytes = json.dumps(webhook_data, sort_keys=True).encode('utf-8')
+    
     # Неверная подпись
     response = client.post(
         "/api/v1/payments/webhook/tribute",
-        json=webhook_data,
-        headers={"trbt-signature": "invalid-signature"}
+        content=body_bytes,
+        headers={
+            "trbt-signature": "invalid-signature",
+            "Content-Type": "application/json"
+        }
     )
     
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -83,8 +96,9 @@ def test_tribute_webhook_invalid_signature(client, tribute_webhook_secret, monke
 
 def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secret, monkeypatch):
     """Тест обработки отмены подписки"""
-    from app.core import config
-    monkeypatch.setattr(config.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    # ВАЖНО: Устанавливаем секрет в настройках
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
     
     webhook_data = {
         "name": "cancelled_subscription",
@@ -107,17 +121,21 @@ def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secr
         }
     }
     
-    body = json.dumps(webhook_data).encode()
+    # ВАЖНО: Создаем сырое тело запроса с детерминированным порядком ключей
+    body_bytes = json.dumps(webhook_data, sort_keys=True).encode('utf-8')
     signature = hmac.new(
         tribute_webhook_secret.encode(),
-        body,
+        body_bytes,
         hashlib.sha256
     ).hexdigest()
     
     response = client.post(
         "/api/v1/payments/webhook/tribute",
-        json=webhook_data,
-        headers={"trbt-signature": signature}
+        content=body_bytes,
+        headers={
+            "trbt-signature": signature,
+            "Content-Type": "application/json"
+        }
     )
     
     assert response.status_code == status.HTTP_200_OK
