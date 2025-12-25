@@ -34,7 +34,13 @@ async def tribute_webhook(
         body = await request.body()
         
         # Распарсить JSON
-        webhook_data = json.loads(body)
+        try:
+            webhook_data = json.loads(body)
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JSON"
+            )
         
         # Обработать webhook
         result = await payment_service.process_tribute_webhook(
@@ -61,11 +67,9 @@ async def tribute_webhook(
             content={"status": "ok"}
         )
         
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON"
-        )
+    except HTTPException:
+        # Пробрасываем HTTPException дальше, чтобы FastAPI обработал его правильно
+        raise
     except Exception as e:
         logger.error(f"Error processing Tribute webhook: {e}", exc_info=True)
         raise HTTPException(

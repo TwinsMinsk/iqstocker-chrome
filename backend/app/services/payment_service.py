@@ -36,13 +36,25 @@ class PaymentService:
             logger.warning("TRIBUTE_WEBHOOK_SECRET not configured, skipping signature verification")
             return True  # В development режиме пропускаем проверку
         
+        # ВАЖНО: Убеждаемся, что request_body это bytes
+        if isinstance(request_body, str):
+            request_body = request_body.encode('utf-8')
+        
         computed = hmac.new(
             settings.TRIBUTE_WEBHOOK_SECRET.encode(),
             request_body,
             hashlib.sha256
         ).hexdigest()
         
-        return hmac.compare_digest(computed, signature)
+        is_valid = hmac.compare_digest(computed, signature)
+        
+        if not is_valid:
+            logger.warning(
+                f"Signature mismatch. Expected: {computed[:16]}..., Got: {signature[:16]}... "
+                f"Body length: {len(request_body)}, Secret configured: {bool(settings.TRIBUTE_WEBHOOK_SECRET)}"
+            )
+        
+        return is_valid
     
     @staticmethod
     async def process_tribute_webhook(

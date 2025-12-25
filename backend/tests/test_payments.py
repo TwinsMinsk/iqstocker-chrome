@@ -17,9 +17,18 @@ def tribute_webhook_secret():
 def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, monkeypatch):
     """Тест обработки webhook новой подписки от Tribute"""
     # ВАЖНО: Устанавливаем секрет в настройках
-    # monkeypatch автоматически обновит settings во всех модулях, которые его импортировали
-    from app.core.config import settings
+    # Нужно обновить settings в обоих местах, так как они могут быть кэшированы
+    from app.core.config import settings, get_settings
+    import app.services.payment_service
+    
+    # Очищаем кэш settings
+    get_settings.cache_clear()
+    
+    # Устанавливаем секрет
     monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    # Также обновляем в payment_service, если он уже импортирован
+    if hasattr(app.services.payment_service, 'settings'):
+        monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
     
     # Данные webhook
     webhook_data = {
@@ -70,8 +79,17 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
 def test_tribute_webhook_invalid_signature(client, tribute_webhook_secret, monkeypatch):
     """Тест webhook с неверной подписью"""
     # ВАЖНО: Устанавливаем секрет в настройках
-    from app.core.config import settings
+    from app.core.config import settings, get_settings
+    import app.services.payment_service
+    
+    # Очищаем кэш settings
+    get_settings.cache_clear()
+    
+    # Устанавливаем секрет
     monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    # Также обновляем в payment_service, если он уже импортирован
+    if hasattr(app.services.payment_service, 'settings'):
+        monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
     
     webhook_data = {
         "name": "new_subscription",
@@ -97,8 +115,17 @@ def test_tribute_webhook_invalid_signature(client, tribute_webhook_secret, monke
 def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secret, monkeypatch):
     """Тест обработки отмены подписки"""
     # ВАЖНО: Устанавливаем секрет в настройках
-    from app.core.config import settings
+    from app.core.config import settings, get_settings
+    import app.services.payment_service
+    
+    # Очищаем кэш settings
+    get_settings.cache_clear()
+    
+    # Устанавливаем секрет
     monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    # Также обновляем в payment_service, если он уже импортирован
+    if hasattr(app.services.payment_service, 'settings'):
+        monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
     
     webhook_data = {
         "name": "cancelled_subscription",
