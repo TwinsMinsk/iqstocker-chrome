@@ -5,7 +5,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+# Устанавливаем ВСЕ зависимости (включая dev), так как они нужны для сборки Next.js
+# TypeScript, Tailwind, ESLint и другие dev-зависимости требуются на этапе build
+RUN npm ci
 
 # Stage 2: Builder
 FROM node:18-alpine AS builder
