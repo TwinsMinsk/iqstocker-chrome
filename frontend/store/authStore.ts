@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      setUser: (user: UserResponse) => {
+      setUser: (user: UserProfileResponse) => {
         set({ user });
       },
 
