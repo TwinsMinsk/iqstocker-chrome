@@ -19,6 +19,8 @@ COPY . .
 
 # Build application
 ENV NEXT_TELEMETRY_DISABLED 1
+# Гарантируем, что папка public существует (на случай если она пустая)
+RUN mkdir -p ./public
 RUN npm run build
 
 # Stage 3: Runner
@@ -33,6 +35,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy necessary files
+# Копируем public (папка гарантированно существует благодаря mkdir в builder stage)
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
