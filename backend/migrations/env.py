@@ -148,9 +148,9 @@ def safe_get_env(key: str, default: str = "") -> str:
         return default
 
 # Получаем DATABASE_URL из переменных окружения или settings
-# Приоритет: переменная окружения > settings
-# Это помогает избежать проблем с кодировкой при работе с Railway
-raw_database_url = safe_get_env("DATABASE_URL") or settings.DATABASE_URL
+# Приоритет: DATABASE_PUBLIC_URL (для локальных подключений) > DATABASE_URL > settings
+# DATABASE_PUBLIC_URL нужен для локальных миграций, так как DATABASE_URL содержит внутренний адрес Railway
+raw_database_url = safe_get_env("DATABASE_PUBLIC_URL") or safe_get_env("DATABASE_URL") or settings.DATABASE_URL
 
 # Устанавливаем DATABASE_URL из settings с нормализацией
 # Обрабатываем возможные проблемы с кодировкой из переменных окружения Railway
@@ -204,7 +204,9 @@ def run_migrations_online() -> None:
 
     """
     # Получаем нормализованный URL напрямую из переменных окружения или settings
-    raw_database_url = safe_get_env("DATABASE_URL") or settings.DATABASE_URL
+    # Используем DATABASE_PUBLIC_URL для локальных подключений (работает с вашей машины)
+    # DATABASE_URL содержит внутренний адрес Railway, который не работает локально
+    raw_database_url = safe_get_env("DATABASE_PUBLIC_URL") or safe_get_env("DATABASE_URL") or settings.DATABASE_URL
     database_url = normalize_database_url(raw_database_url)
     
     try:
@@ -217,12 +219,25 @@ def run_migrations_online() -> None:
         # так как это полностью обходит внутреннее построение DSN-строки.
         def get_conn():
             import psycopg2
+            
+            def clean_param(val):
+                """Очищает параметр от битых UTF-8 символов"""
+                if not val:
+                    return ""
+                s = str(val)
+                try:
+                    s.encode('utf-8')
+                    return s
+                except UnicodeEncodeError:
+                    # Если есть битые символы, пробуем "прогнать" через latin-1/utf-8
+                    return s.encode('latin-1', errors='replace').decode('utf-8', errors='replace')
+
             return psycopg2.connect(
-                user=unquote(url_obj.username or ""),
-                password=unquote(url_obj.password or ""),
-                host=url_obj.host,
+                user=clean_param(unquote(url_obj.username or "")),
+                password=clean_param(unquote(url_obj.password or "")),
+                host=clean_param(url_obj.host),
                 port=url_obj.port or 5432,
-                database=url_obj.database,
+                database=clean_param(url_obj.database),
                 connect_timeout=10,
                 client_encoding="utf8"
             )

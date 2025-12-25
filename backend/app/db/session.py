@@ -10,45 +10,51 @@ from app.core.config import settings
 # Определяем DATABASE_URL в зависимости от настроек
 database_url = settings.DATABASE_URL
 
+# Настройки engine
+engine_kwargs = {
+    "pool_pre_ping": True if not settings.USE_SQLITE else False,
+    "echo": settings.DEBUG,
+}
+
 # Если USE_SQLITE=True, используем SQLite (для разработки без Docker)
 if settings.USE_SQLITE:
     database_url = "sqlite:///./iqstocker.db"
-    # SQLite не поддерживает некоторые функции PostgreSQL
     connect_args = {"check_same_thread": False}
-    pool_pre_ping = False
     pool_size = None
     max_overflow = None
 else:
+    connect_args = {}
+    pool_size = 10
+    max_overflow = 20
     # Для PostgreSQL на Windows используем кастомный creator, чтобы избежать UnicodeDecodeError
     try:
         url_obj = make_url(database_url)
         
         def get_conn():
             import psycopg2
+            
+            def clean_param(val):
+                if not val: return ""
+                try:
+                    s = str(val)
+                    s.encode('utf-8')
+                    return s
+                except:
+                    return s.encode('latin-1', errors='replace').decode('utf-8', errors='replace')
+
             return psycopg2.connect(
-                user=unquote(url_obj.username or ""),
-                password=unquote(url_obj.password or ""),
-                host=url_obj.host,
+                user=clean_param(unquote(url_obj.username or "")),
+                password=clean_param(unquote(url_obj.password or "")),
+                host=clean_param(url_obj.host),
                 port=url_obj.port or 5432,
-                database=url_obj.database,
+                database=clean_param(url_obj.database),
                 client_encoding="utf8"
             )
             
         engine_kwargs["creator"] = get_conn
-        # Для PostgreSQL используем пустой URL, так как параметры в creator
         database_url = "postgresql://"
     except Exception:
         pass
-    
-    pool_pre_ping = True
-    pool_size = 10
-    max_overflow = 20
-
-# Создаём engine
-engine_kwargs = {
-    "pool_pre_ping": pool_pre_ping,
-    "echo": settings.DEBUG,
-}
 
 if pool_size is not None:
     engine_kwargs["pool_size"] = pool_size
