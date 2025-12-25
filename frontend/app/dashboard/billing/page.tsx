@@ -4,24 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { billingAPI } from '@/services/api/billing';
-
-// Интерфейс для плана подписки
-interface Plan {
-  id: string;
-  name: string;
-  price_eur: number;
-  credits: number;
-  duration_days: number;
-  is_popular?: boolean;
-}
+import { billingAPI, type Plan } from '@/services/api/billing';
 
 // Дефолтные планы на случай если API не вернет данные
 const DEFAULT_PLANS: Plan[] = [
-  { id: 'credit_500', name: '500 Credits', price_eur: 1.05, credits: 500, duration_days: 365 },
-  { id: 'credit_1000', name: '1000 Credits', price_eur: 1.68, credits: 1000, duration_days: 365 },
-  { id: 'credit_2000', name: '2000 Credits', price_eur: 3.36, credits: 2000, duration_days: 365 },
-  { id: 'credit_5000', name: '5000 Credits', price_eur: 6.30, credits: 5000, duration_days: 365 },
+  { id: 'credit_500', name: '500 Credits', price_eur: 1.05, credits: 500, duration_days: 365, description: '' },
+  { id: 'credit_1000', name: '1000 Credits', price_eur: 1.68, credits: 1000, duration_days: 365, description: '' },
+  { id: 'credit_2000', name: '2000 Credits', price_eur: 3.36, credits: 2000, duration_days: 365, description: '' },
+  { id: 'credit_5000', name: '5000 Credits', price_eur: 6.30, credits: 5000, duration_days: 365, description: '' },
 ];
 
 export default function BillingPage() {
