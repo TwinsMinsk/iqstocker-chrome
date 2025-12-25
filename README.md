@@ -1,8 +1,8 @@
 # 🚀 IQStocker Chrome Auto
 ## SaaS-сервис для автоматизации отправки промптов в Midjourney через Discord
 
-**Статус:** 🟡 В разработке  
-**Версия:** 1.0.0 (MVP)  
+**Статус:** 🟢 Ready for Production  
+**Версия:** 1.0.0  
 **Разработчик:** Solo developer  
 
 ---
@@ -66,13 +66,25 @@ IQStocker Chrome Auto — это SaaS-сервис, который автома�
 
 ## 🚀 БЫСТРЫЙ СТАРТ
 
-### 1. Прочитайте документацию
+### Production деплой (готово к использованию!)
+
 ```bash
-# Начните с этого файла:
-Docs/README_QUICKSTART.md
+# 1. Настройте .env файлы
+cp backend/env.example backend/.env
+cp frontend/env.example frontend/.env
+# Отредактируйте файлы
+
+# 2. Запустите автоматический деплой
+./scripts/deploy.sh  # Linux/Mac
+# или
+.\scripts\deploy.ps1  # Windows
 ```
 
-### 2. Настройте окружение
+📖 **Полная инструкция**: [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md)  
+⚡ **Быстрый старт**: [QUICK_DEPLOY.md](QUICK_DEPLOY.md)
+
+### Локальная разработка
+
 ```bash
 # Backend
 cd backend
@@ -89,12 +101,6 @@ cd extension
 npm install
 npm run build
 ```
-
-### 3. Следуйте IMPLEMENTATION_GUIDE.md
-- Week 1-2: Backend
-- Week 2-3: Frontend
-- Week 3-4: Extension
-- Week 4-5: Integration
 
 ---
 
@@ -147,7 +153,43 @@ Proprietary — Все права защищены
 
 ---
 
+## 🎯 PRODUCTION DEPLOYMENT
+
+Проект полностью готов к production деплою!
+
+### 🚂 Деплой на Railway (рекомендуется для начала):
+
+**Быстрый старт:**
+- 📖 [RAILWAY_STEP_BY_STEP.md](RAILWAY_STEP_BY_STEP.md) - **Пошаговая инструкция** (начните отсюда!)
+- ⚡ [RAILWAY_QUICK_START.md](RAILWAY_QUICK_START.md) - Краткая версия
+- 📚 [RAILWAY_DEPLOYMENT_GUIDE.md](RAILWAY_DEPLOYMENT_GUIDE.md) - Полное руководство
+
+**Преимущества Railway:**
+- ✅ Бесплатный tier ($5 кредитов в месяц)
+- ✅ Автоматические домены для тестирования
+- ✅ Managed PostgreSQL
+- ✅ Автоматический деплой из GitHub
+- ✅ Простая настройка
+
+### 📋 Что включено:
+- ✅ Docker контейнеры для всех сервисов
+- ✅ Production-ready конфигурация
+- ✅ Автоматические скрипты деплоя
+- ✅ Health checks и мониторинг
+- ✅ Backup и restore стратегия
+- ✅ SSL/HTTPS поддержка
+- ✅ Nginx reverse proxy
+- ✅ Полная документация
+
+### 📚 Документация по деплою:
+- 📖 [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md) - Полное руководство (VPS)
+- ⚡ [QUICK_DEPLOY.md](QUICK_DEPLOY.md) - Быстрый старт за 5 минут
+- ✅ [PRODUCTION_READY_CHECKLIST.md](PRODUCTION_READY_CHECKLIST.md) - Чек-лист готовности
+- 💾 [BACKUP_STRATEGY.md](BACKUP_STRATEGY.md) - Резервное копирование
+
+---
+
 **Создано:** December 22, 2025  
 **Версия:** 1.0.0  
-**Статус:** В разработке 🚧
+**Статус:** 🟢 Production Ready
 

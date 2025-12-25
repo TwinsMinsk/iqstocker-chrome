@@ -97,13 +97,41 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "ok",
+    """
+    Health check endpoint для мониторинга
+    Проверяет доступность критичных сервисов
+    """
+    from app.db.session import get_db
+    from app.integrations.redis_client import get_redis
+    
+    health_status = {
+        "status": "healthy",
         "version": "1.0.0",
         "environment": settings.ENVIRONMENT,
-        "database": "connected" if settings.DATABASE_URL else "not configured"
+        "services": {}
     }
+    
+    # Проверка database
+    try:
+        db = next(get_db())
+        db.execute("SELECT 1")
+        health_status["services"]["database"] = "ok"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["services"]["database"] = f"error: {str(e)}"
+    
+    # Проверка Redis (опционально)
+    try:
+        redis = await get_redis()
+        if redis:
+            await redis.ping()
+            health_status["services"]["redis"] = "ok"
+        else:
+            health_status["services"]["redis"] = "not configured"
+    except Exception as e:
+        health_status["services"]["redis"] = f"error: {str(e)}"
+    
+    return health_status
 
 if __name__ == "__main__":
     import uvicorn

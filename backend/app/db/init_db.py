@@ -19,6 +19,11 @@ def init_db() -> None:
     
     if settings.DEBUG:
         print("Database tables created successfully!")
+    
+    # Применяем миграции для добавления недостающих колонок
+    if settings.USE_SQLITE:
+        from app.db.migrate_add_telegram_user_id import migrate_add_telegram_user_id
+        migrate_add_telegram_user_id()
 
 
 if __name__ == "__main__":

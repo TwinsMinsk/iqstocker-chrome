@@ -78,9 +78,21 @@ export default function HomePage() {
     }
   ];
 
+  const [selectedCredits, setSelectedCredits] = useState(500);
+
+  const creditOptions = [
+    { id: 'credit_500', amount: 500, price: 1.05, discount: null },
+    { id: 'credit_1000', amount: 1000, price: 1.68, discount: '-20%' },
+    { id: 'credit_2000', amount: 2000, price: 3.36, discount: '-20%' },
+    { id: 'credit_5000', amount: 5000, price: 6.30, discount: '-40%' },
+  ];
+
+  const currentOption = creditOptions.find(opt => opt.amount === selectedCredits) || creditOptions[0];
+
   return (
     <div className="bg-[#050505] text-gray-200 min-h-screen">
-      {/* HERO SECTION */}
+      {/* ... existing hero and features ... */}
+      {/* (I will replace the pricing section below) */}
       <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] bg-indigo-600/10 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
@@ -187,82 +199,86 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* PRICING */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/5">
-        <div className="max-w-7xl mx-auto">
+      {/* PRICING SECTION - CREDIT BASED */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/5 relative overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-[600px] bg-indigo-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
+        
+        <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Простые тарифы</h2>
-            <p className="text-gray-400">Платите только за то, что используете. Пакеты не сгорают.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Card 1 */}
-            <div className="p-8 rounded-[32px] bg-[#0a0a0a] border border-white/10 flex flex-col">
-              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Стартовый</h3>
-              <div className="text-4xl font-bold text-white mb-2">€3</div>
-              <p className="text-gray-500 text-sm mb-8">Идеально для пробы</p>
-              
-              <ul className="space-y-4 mb-8 flex-1">
-                {['1,000 Кредитов', 'Базовая скорость', 'Поддержка по Email'].map((feat, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-gray-300">
-                    <IconWrapper size={20} className="text-indigo-500 mt-0.5">
-                      <CheckIcon size={20} />
-                    </IconWrapper>
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Link href="/register" className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white font-bold text-center transition-colors">
-                Выбрать
-              </Link>
+            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-8">
+              Забудь про ежемесячные подписки
+            </h2>
+            
+            <div className="inline-block text-left space-y-4 mb-16">
+              {[
+                'Покупай столько кредитов, сколько тебе нужно',
+                'Без ежемесячных платежей и автосписаний',
+                'Пополняй баланс в любое время',
+                'Кредиты можно использовать без ограничения по времени',
+                'Чем больше кредитов покупаешь - тем выгоднее цена',
+              ].map((text, i) => (
+                <div key={i} className="flex items-center gap-4 text-base md:text-lg font-medium text-white/90">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-md bg-indigo-500/20 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  {text}
+                </div>
+              ))}
             </div>
 
-            {/* Card 2 - Featured */}
-            <div className="p-8 rounded-[32px] bg-[#121212] border border-indigo-500/50 relative shadow-[0_0_50px_rgba(79,70,229,0.1)] flex flex-col transform md:-translate-y-4">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-                Популярный
+            {/* Credit Selector Card */}
+            <div className="relative group max-w-xl mx-auto">
+              {/* Animated glow border */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-500 rounded-[40px] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+              
+              <div className="relative bg-[#0a0a0c] rounded-[38px] p-8 md:p-12 border border-white/10 shadow-2xl backdrop-blur-xl">
+                <h3 className="text-indigo-400 font-bold uppercase tracking-widest text-xs mb-10">
+                  Выбери сколько кредитов тебе нужно
+                </h3>
+
+                {/* Credit Buttons Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                  {creditOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setSelectedCredits(option.amount)}
+                      className={`relative py-4 px-2 rounded-2xl border transition-all font-black text-xl flex flex-col items-center justify-center ${
+                        selectedCredits === option.amount
+                          ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.2)]'
+                          : 'bg-white/5 border-white/10 text-white/30 hover:border-white/20 hover:text-white/50'
+                      }`}
+                    >
+                      {option.amount}
+                      {option.discount && (
+                        <span className={`absolute -top-2 -right-2 ${option.amount === 5000 ? 'bg-red-600' : 'bg-orange-500'} text-white text-[9px] px-2 py-0.5 rounded-full transform rotate-12 font-black shadow-lg`}>
+                          {option.discount}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mb-12">
+                  <div className="text-white/40 text-xs font-black uppercase tracking-[0.2em] mb-3">Стоимость</div>
+                  <div className="text-7xl font-black text-white tracking-tighter">
+                    {currentOption.price.toLocaleString('ru-RU', { minimumFractionDigits: 2 })} <span className="text-3xl ml-1 text-white/50 tracking-normal">€</span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/register"
+                  className="block w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black py-6 rounded-2xl text-xl transition-all shadow-[0_10px_40px_rgba(79,70,229,0.3)] hover:shadow-[0_15px_50px_rgba(79,70,229,0.4)] active:scale-[0.98]"
+                >
+                  Купить кредиты
+                </Link>
+                
+                <p className="mt-6 text-[10px] text-white/20 font-bold uppercase tracking-widest">
+                  Мгновенное начисление • Без скрытых комиссий
+                </p>
               </div>
-              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Про</h3>
-              <div className="text-4xl font-bold text-white mb-2">€10</div>
-              <p className="text-gray-500 text-sm mb-8">Для активных креаторов</p>
-              
-              <ul className="space-y-4 mb-8 flex-1">
-                {['5,000 Кредитов', 'Приоритетная очередь', 'Приоритетная поддержка', 'Ранний доступ к функциям'].map((feat, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-white font-medium">
-                    <IconWrapper size={20} className="text-indigo-400 mt-0.5">
-                      <CheckIcon size={20} />
-                    </IconWrapper>
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Link href="/register" className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-center transition-colors">
-                Выбрать Про
-              </Link>
-            </div>
-
-            {/* Card 3 */}
-            <div className="p-8 rounded-[32px] bg-[#0a0a0a] border border-white/10 flex flex-col">
-              <h3 className="text-indigo-400 font-bold tracking-widest uppercase text-xs mb-4">Максимальный</h3>
-              <div className="text-4xl font-bold text-white mb-2">€17</div>
-              <p className="text-gray-500 text-sm mb-8">Максимальная выгода</p>
-              
-              <ul className="space-y-4 mb-8 flex-1">
-                {['10,000 Кредитов', 'Максимальная скорость', 'Персональный менеджер', 'API Доступ (beta)'].map((feat, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-gray-300">
-                    <IconWrapper size={20} className="text-indigo-500 mt-0.5">
-                      <CheckIcon size={20} />
-                    </IconWrapper>
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Link href="/register" className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white font-bold text-center transition-colors">
-                Выбрать
-              </Link>
             </div>
           </div>
         </div>

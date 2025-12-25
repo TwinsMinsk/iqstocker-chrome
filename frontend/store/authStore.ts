@@ -3,11 +3,12 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authAPI, UserResponse, TokenResponse } from '@/services/api/auth';
+import { authAPI, TokenResponse } from '@/services/api/auth';
+import { usersAPI, UserProfileResponse } from '@/services/api/users';
 import { apiClient } from '@/services/api/client';
 
 interface AuthState {
-  user: UserResponse | null;
+  user: UserProfileResponse | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
@@ -16,7 +17,7 @@ interface AuthState {
 
   // Actions
   setTokens: (tokens: TokenResponse) => void;
-  setUser: (user: UserResponse) => void;
+  setUser: (user: UserProfileResponse) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -153,7 +154,7 @@ export const useAuthStore = create<AuthState>()(
 
       fetchUser: async () => {
         try {
-          const user = await authAPI.getMe();
+          const user = await usersAPI.getProfile();
           set({ user, isAuthenticated: true });
         } catch (error) {
           set({ isAuthenticated: false, user: null });

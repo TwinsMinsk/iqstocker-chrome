@@ -87,8 +87,8 @@ class PaymentService:
         payload = webhook_data.get("payload", {})
         
         # 2. Обработать событие
-        if event_name == "new_subscription":
-            return await PaymentService._handle_new_subscription(db, payload)
+        if event_name in ["new_subscription", "payment_received", "donation", "digital_product_purchased"]:
+            return await PaymentService._handle_payment(db, payload, event_name)
         elif event_name == "cancelled_subscription":
             return await PaymentService._handle_cancelled_subscription(db, payload)
         else:
@@ -99,68 +99,93 @@ class PaymentService:
             }
     
     @staticmethod
-    async def _handle_new_subscription(
+    async def _handle_payment(
         db: Session,
-        payload: Dict
+        payload: Dict,
+        event_name: str
     ) -> Dict:
         """
-        Обработать новую подписку от Tribute
+        Обработать платеж от Tribute (любого типа)
         
         Args:
             db: Database session
-            payload: Данные подписки
+            payload: Данные платежа
+            event_name: Тип события
         
         Returns:
             Dict с результатом
         """
-        period_id = str(payload.get("period_id"))
+        # В разных событиях ID может называться по-разному
+        payment_id = str(payload.get("period_id") or payload.get("payment_id") or payload.get("id"))
         amount = payload.get("amount", 0) / 100  # Tribute передает в центах
         currency = payload.get("currency", "eur").upper()
         telegram_user_id = payload.get("telegram_user_id")
-        subscription_name = payload.get("subscription_name", "")
-        expires_at_str = payload.get("expires_at")
+        
+        # Название продукта/подписки
+        product_name = payload.get("subscription_name") or payload.get("product_name") or payload.get("description", "")
+        
+        # Пытаемся найти user_id в custom_data или comment (Tribute часто туда кладет)
+        user_id = payload.get("custom_data", {}).get("user_id") or payload.get("comment")
         
         # Проверить на дублирование (idempotency)
         existing_transaction = db.query(Transaction).filter(
-            Transaction.payment_id == period_id
+            Transaction.payment_id == payment_id
         ).first()
         
         if existing_transaction and existing_transaction.status == "completed":
-            logger.info(f"Transaction {period_id} already processed")
+            logger.info(f"Transaction {payment_id} already processed")
             return {
                 "status": "already_processed",
                 "message": "Transaction already processed"
             }
         
-        # Найти пользователя по telegram_user_id или создать транзакцию без пользователя
-        # TODO: Реализовать связь telegram_user_id с user_id
-        # Пока используем payment_id для связи
+        # Определить план по названию или сумме
+        plan_id = PaymentService._get_plan_id_from_name(product_name)
         
-        # Определить план по названию
-        plan_id = PaymentService._get_plan_id_from_name(subscription_name)
+        # Если не нашли по названию, попробуем по сумме (как запасной вариант)
         if not plan_id:
-            logger.error(f"Unknown subscription name: {subscription_name}")
+            plan_id = PaymentService._get_plan_id_from_amount(amount)
+
+        if not plan_id:
+            logger.error(f"Unknown product: {product_name}, amount: {amount}")
             return {
                 "status": "error",
-                "message": f"Unknown subscription: {subscription_name}"
+                "message": f"Unknown product: {product_name}"
             }
         
         from app.services.billing_service import billing_service
         plan = billing_service.get_plan(plan_id)
         
+        # Поиск пользователя
+        target_user = None
+        from app.models.user import User
+        
+        # 1. Сначала по user_id из custom_data/comment
+        if user_id:
+            target_user = db.query(User).filter(User.id == user_id).first()
+        
+        # 2. Если не нашли, по telegram_user_id
+        if not target_user and telegram_user_id:
+            target_user = db.query(User).filter(User.telegram_user_id == str(telegram_user_id)).first()
+        
+        # 3. Как запасной вариант - по email (если Tribute его передает в payload)
+        if not target_user and payload.get("email"):
+            target_user = db.query(User).filter(User.email == payload.get("email")).first()
+
         # Создать или обновить транзакцию
         if existing_transaction:
             transaction = existing_transaction
+            if not transaction.user_id and target_user:
+                transaction.user_id = target_user.id
         else:
-            # TODO: Найти пользователя по telegram_user_id
-            # Пока создаем транзакцию без user_id (нужно будет связать позже)
             transaction = Transaction(
-                payment_id=period_id,
+                payment_id=payment_id,
                 amount=amount,
                 credits=plan["credits"],
                 type="purchase",
                 status="pending",
-                plan_id=plan_id
+                plan_id=plan_id,
+                user_id=target_user.id if target_user else None
             )
             db.add(transaction)
         
@@ -168,120 +193,97 @@ class PaymentService:
         transaction.status = "completed"
         transaction.completed_at = datetime.utcnow()
         
-        # Если есть user_id, обновить подписку
+        # Если нашли пользователя, обновляем его баланс
         if transaction.user_id:
             subscription = db.query(Subscription).filter(
                 Subscription.user_id == transaction.user_id
             ).first()
             
-            if subscription:
-                # Начислить кредиты
-                subscription.credits_balance += plan["credits"]
+            if not subscription:
+                # Создаем запись о балансе, если её нет
+                subscription = Subscription(
+                    user_id=transaction.user_id,
+                    plan_id=plan_id,
+                    credits_balance=0,
+                    status="active"
+                )
+                db.add(subscription)
+            
+            # Начислить кредиты
+            subscription.credits_balance += plan["credits"]
+            subscription.plan_id = plan_id  # Обновляем "текущий" пакет
+            subscription.status = "active"
+            
+            # Срок действия (для кредитов обычно 1 год или бессрочно)
+            subscription.subscription_expires_at = datetime.utcnow() + timedelta(days=plan.get("duration_days", 365))
                 
-                # Обновить план если нужно
-                if plan_id != "plan_free":
-                    subscription.plan_id = plan_id
-                    subscription.status = "active"
-                    
-                    if expires_at_str:
-                        try:
-                            subscription.subscription_expires_at = datetime.fromisoformat(
-                                expires_at_str.replace("Z", "+00:00")
-                            )
-                        except:
-                            # Если не удалось распарсить, устанавливаем 30 дней
-                            subscription.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
-                
-                # Отправить email уведомление
-                if email_service:
-                    user = db.query(User).filter(User.id == transaction.user_id).first()
-                    if user:
-                        try:
-                            email_service.send_email(
-                                to_email=user.email,
-                                subject="Платеж успешно обработан - Midjourney Auto",
-                                html_content=f"""
-                                <html>
-                                <body>
-                                    <h2>Платеж успешно обработан!</h2>
-                                    <p>Ваш план <strong>{plan['name']}</strong> активирован.</p>
-                                    <p>Начислено кредитов: <strong>{plan['credits']}</strong></p>
-                                    <p>Текущий баланс: <strong>{subscription.credits_balance}</strong></p>
-                                </body>
-                                </html>
-                                """
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to send payment confirmation email: {e}")
+            # Отправить email уведомление
+            if email_service:
+                user = db.query(User).filter(User.id == transaction.user_id).first()
+                if user:
+                    try:
+                        email_service.send_email(
+                            to_email=user.email,
+                            subject="Кредиты успешно начислены - Midjourney Auto",
+                            html_content=f"""
+                            <html>
+                            <body>
+                                <h2>Пополнение баланса успешно!</h2>
+                                <p>Вы приобрели: <strong>{plan['name']}</strong></p>
+                                <p>Начислено кредитов: <strong>{plan['credits']}</strong></p>
+                                <p>Текущий баланс: <strong>{subscription.credits_balance}</strong></p>
+                                <p>Спасибо за покупку!</p>
+                            </body>
+                            </html>
+                            """
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to send payment confirmation email: {e}")
         
         db.commit()
         
-        logger.info(f"Processed new subscription: period_id={period_id}, plan={plan_id}")
+        logger.info(f"Processed payment: id={payment_id}, plan={plan_id}, user={transaction.user_id}")
         
         return {
             "status": "ok",
-            "message": "Subscription processed successfully"
+            "message": "Payment processed successfully",
+            "credits_added": plan["credits"]
         }
     
     @staticmethod
-    async def _handle_cancelled_subscription(
-        db: Session,
-        payload: Dict
-    ) -> Dict:
-        """
-        Обработать отмену подписки от Tribute
-        
-        Args:
-            db: Database session
-            payload: Данные отмены
-        
-        Returns:
-            Dict с результатом
-        """
-        period_id = str(payload.get("period_id"))
-        
-        # Найти транзакцию
-        transaction = db.query(Transaction).filter(
-            Transaction.payment_id == period_id
-        ).first()
-        
-        if not transaction:
-            logger.warning(f"Transaction not found for cancelled subscription: {period_id}")
-            return {
-                "status": "ignored",
-                "message": "Transaction not found"
-            }
-        
-        # Обновить статус подписки пользователя
-        if transaction.user_id:
-            subscription = db.query(Subscription).filter(
-                Subscription.user_id == transaction.user_id
-            ).first()
-            
-            if subscription:
-                subscription.status = "cancelled"
-                db.commit()
-        
-        logger.info(f"Processed cancelled subscription: period_id={period_id}")
-        
-        return {
-            "status": "ok",
-            "message": "Cancellation processed"
-        }
-    
+    def _get_plan_id_from_amount(amount: float) -> Optional[str]:
+        """Определить plan_id по сумме платежа (запасной вариант)"""
+        from app.services.billing_service import PLANS
+        for pid, plan in PLANS.items():
+            if abs(float(plan["price_eur"]) - float(amount)) < 0.01:
+                return pid
+        return None
+
     @staticmethod
-    def _get_plan_id_from_name(subscription_name: str) -> Optional[str]:
-        """Определить plan_id по названию подписки"""
-        name_lower = subscription_name.lower()
-        
-        if "basic" in name_lower:
-            return "plan_basic"
-        elif "standard" in name_lower:
-            return "plan_standard"
-        elif "pro" in name_lower:
-            return "plan_pro"
-        else:
+    def _get_plan_id_from_name(name: str) -> Optional[str]:
+        """Определить plan_id по названию подписки или продукта"""
+        if not name:
             return None
+        name_lower = name.lower()
+        
+        if "500" in name_lower:
+            return "credit_500"
+        elif "1000" in name_lower:
+            return "credit_1000"
+        elif "2000" in name_lower:
+            return "credit_2000"
+        elif "5000" in name_lower:
+            return "credit_5000"
+        
+        # Совместимость со старыми планами
+        if "basic" in name_lower:
+            return "credit_1000"
+        elif "standard" in name_lower:
+            return "credit_5000"
+        elif "pro" in name_lower:
+            return "credit_5000"  # Или маппинг на что-то другое
+            
+        return None
 
 
 # Глобальный экземпляр

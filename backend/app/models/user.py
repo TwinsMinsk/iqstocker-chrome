@@ -28,6 +28,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     oauth_google_id = Column(String(255), unique=True, nullable=True)
+    telegram_user_id = Column(String(255), unique=True, nullable=True, index=True)
     
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)

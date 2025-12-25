@@ -46,8 +46,8 @@ class PlanResponse(BaseModel):
 
 
 class PurchasePlanRequest(BaseModel):
-    """Схема запроса на покупку плана"""
-    plan_id: str = Field(..., description="ID плана (plan_basic, plan_standard, plan_pro)")
+    """Схема запроса на покупку пакета кредитов"""
+    plan_id: str = Field(..., description="ID пакета (credit_500, credit_1000, credit_2000, credit_5000)")
 
 
 class PurchasePlanResponse(BaseModel):

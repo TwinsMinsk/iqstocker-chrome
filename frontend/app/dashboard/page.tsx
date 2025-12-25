@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { BalanceCard } from '@/components/dashboard/BalanceCard';
-import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { LicenseKeyCard } from '@/components/dashboard/LicenseKeyCard';
 import { ExtensionDownload } from '@/components/dashboard/ExtensionDownload';
 
@@ -35,13 +34,12 @@ export default function DashboardPage() {
           </h2>
         </header>
 
-        <div className="grid lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-2 grid md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          <div className="h-full">
             <BalanceCard />
-            <SubscriptionCard />
           </div>
-          <div className="lg:col-span-1">
-             <LicenseKeyCard />
+          <div className="h-full">
+            <LicenseKeyCard />
           </div>
         </div>
 

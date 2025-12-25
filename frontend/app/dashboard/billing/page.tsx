@@ -16,12 +16,22 @@ interface Plan {
   is_popular?: boolean;
 }
 
+// Дефолтные планы на случай если API не вернет данные
+const DEFAULT_PLANS: Plan[] = [
+  { id: 'credit_500', name: '500 Credits', price_eur: 1.05, credits: 500, duration_days: 365 },
+  { id: 'credit_1000', name: '1000 Credits', price_eur: 1.68, credits: 1000, duration_days: 365 },
+  { id: 'credit_2000', name: '2000 Credits', price_eur: 3.36, credits: 2000, duration_days: 365 },
+  { id: 'credit_5000', name: '5000 Credits', price_eur: 6.30, credits: 5000, duration_days: 365 },
+];
+
 export default function BillingPage() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, fetchUser } = useAuthStore();
   const router = useRouter();
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<Plan[]>(DEFAULT_PLANS); // Сразу ставим дефолтные
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>('credit_500'); // Дефолтный выбор
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -30,25 +40,34 @@ export default function BillingPage() {
     }
 
     loadPlans();
-  }, [isAuthenticated, router]);
+    fetchUser(); // Обновляем данные пользователя (баланс)
+  }, [isAuthenticated, router, fetchUser]);
 
   const loadPlans = async () => {
     try {
-      const response = await billingAPI.getPlans();
-      setPlans(response.plans);
+      const data = await billingAPI.getPlans();
+      if (Array.isArray(data) && data.length > 0) {
+        const sortedPlans = data.sort((a: Plan, b: Plan) => a.credits - b.credits);
+        setPlans(sortedPlans);
+        // Если текущий выбранный ID не входит в новые планы, выбираем первый
+        if (!sortedPlans.find(p => p.id === selectedPlanId)) {
+          setSelectedPlanId(sortedPlans[0].id);
+        }
+      }
     } catch (error) {
       console.error('Failed to load plans:', error);
+      // Если ошибка, оставляем дефолтные планы
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePurchase = async (planId: string) => {
-    if (!user) return;
+  const handlePurchase = async () => {
+    if (!user || !selectedPlanId) return;
 
-    setPurchasing(planId);
+    setPurchasing(selectedPlanId);
     try {
-      const response = await billingAPI.purchasePlan(planId);
+      const response = await billingAPI.purchasePlan({ plan_id: selectedPlanId });
       
       // Перенаправление на страницу оплаты Telegram Tribute
       if (response.payment_url) {
@@ -61,132 +80,124 @@ export default function BillingPage() {
     }
   };
 
-  if (!isAuthenticated || loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-gray-500">Загрузка...</div>
-        </div>
-      </div>
-    );
+  const selectedPlan = plans.find(p => p.id === selectedPlanId) || plans[0];
+
+  if (!isAuthenticated) {
+    return null; // Ждем редиректа
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <header className="mb-12">
-        <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Оплата</h1>
-        <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase leading-none">
-          Купить <span className="text-white/20 tracking-normal italic">Кредиты</span>
-        </h2>
-      </header>
-
-      {/* Текущий баланс */}
-      <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-900 text-white rounded-[40px] shadow-2xl p-10 mb-16 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] opacity-60 mb-2">Доступный баланс</div>
-            <div className="text-6xl font-black tracking-tighter">
-              {user?.balance?.toLocaleString() || 0} <span className="text-lg opacity-40 uppercase tracking-widest ml-2">Кредитов</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs font-black uppercase tracking-[0.2em] opacity-60 mb-2">Текущий уровень</div>
-            <div className="text-2xl font-black tracking-widest uppercase px-6 py-2 bg-black/20 rounded-full border border-white/10">
-              {user?.subscription_tier === 'FREE' ? 'БЕСПЛАТНЫЙ' : user?.subscription_tier || 'БЕСПЛАТНЫЙ'}
-            </div>
-          </div>
+    <div className="container mx-auto px-4 py-12 max-w-4xl">
+      {loading && !plans.length ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-gray-500 font-black uppercase tracking-widest animate-pulse">Загрузка...</div>
         </div>
-      </div>
-
-      {/* Планы подписки */}
-      <div className="grid md:grid-cols-3 gap-8 mb-16">
-        {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className={`rounded-[40px] p-10 border transition-all duration-500 hover:scale-[1.02] ${
-              plan.is_popular 
-                ? 'bg-indigo-600 border-indigo-400 shadow-[0_0_50px_rgba(79,70,229,0.3)]' 
-                : 'bg-white/5 border-white/10'
-            }`}
-          >
-            {plan.is_popular && (
-              <div className="bg-white text-indigo-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-8 inline-block shadow-xl">
-                Самый популярный
+      ) : (
+        <div className="text-center mb-12">
+        <div className="flex flex-col items-center space-y-4 mb-20">
+          {[
+            'Покупай столько кредитов, сколько тебе нужно',
+            'Без ежемесячных платежей и автосписаний',
+            'Пополняй баланс в любое время',
+            'Кредиты можно использовать без ограничения по времени',
+            'Чем больше кредитов покупаешь - тем выгоднее цена',
+          ].map((text, i) => (
+            <div key={i} className="flex items-center gap-4 text-base md:text-lg font-medium text-white/90">
+              <div className="flex-shrink-0 w-6 h-6 rounded-md bg-green-500/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-            )}
-
-            <h3 className={`text-sm font-black mb-2 tracking-widest uppercase ${plan.is_popular ? 'text-white' : 'text-indigo-400'}`}>
-              {plan.name}
-            </h3>
-            <div className="flex items-baseline gap-1 mb-8">
-               <span className="text-5xl font-black tracking-tighter text-white">€{plan.price_eur}</span>
-               <span className={`text-xs uppercase tracking-widest ${plan.is_popular ? 'text-white/60' : 'text-white/20'}`}>Разово</span>
+              {text}
             </div>
-            
-            <p className={`text-sm font-medium mb-10 ${plan.is_popular ? 'text-white/80' : 'text-white/40'}`}>
-              {plan.credits.toLocaleString()} Промптов на {plan.duration_days} дней использования.
-            </p>
+          ))}
+        </div>
 
-            <ul className="space-y-4 mb-12">
-              {[
-                `${plan.credits.toLocaleString()} Кредитов`,
-                'Автоматическая обработка',
-                plan.is_popular ? 'Приоритетная поддержка' : 'Стандартная поддержка',
-                plan.price_eur > 5 ? `Экономия ${Math.round((1 - (plan.price_eur / plan.credits * 1000)) / 0.03 * 100)}%` : null
-              ].filter(Boolean).map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-                  <div className={`w-1.5 h-1.5 rounded-full ${plan.is_popular ? 'bg-white' : 'bg-indigo-500'}`}></div>
-                  <span className={plan.is_popular ? 'text-white' : 'text-white/60'}>{item}</span>
-                </li>
+        {/* Селектор кредитов */}
+        <div className="relative group max-w-xl mx-auto">
+          {/* Свечение сзади */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 rounded-[40px] blur-2xl opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200"></div>
+          
+          <div className="relative bg-[#0a0a0c] rounded-[40px] p-8 md:p-14 border border-white/10 shadow-2xl backdrop-blur-xl">
+            <h3 className="text-[#848aff] font-black uppercase tracking-[0.3em] text-[10px] mb-14">
+              ВЫБЕРИ СКОЛЬКО КРЕДИТОВ ТЕБЕ НУЖНО
+            </h3>
+
+            {/* Сетка кнопок выбора */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-20">
+              {plans.map((plan) => (
+                <button
+                  key={plan.id}
+                  onClick={() => setSelectedPlanId(plan.id)}
+                  className={`relative h-16 rounded-2xl border transition-all font-black text-2xl flex items-center justify-center ${
+                    selectedPlanId === plan.id
+                      ? 'bg-indigo-600/10 border-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.3)]'
+                      : 'bg-white/5 border-white/5 text-[#333333] hover:border-white/10 hover:text-white/40'
+                  }`}
+                >
+                  {plan.credits}
+                  {(plan.id === 'credit_1000' || plan.id === 'credit_2000') && (
+                    <span className="absolute -top-3 -right-3 bg-[#ff6b00] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                      -20%
+                    </span>
+                  )}
+                  {plan.id === 'credit_5000' && (
+                    <span className="absolute -top-3 -right-3 bg-[#ff0000] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                      -40%
+                    </span>
+                  )}
+                </button>
               ))}
-            </ul>
+            </div>
+
+            <div className="mb-14">
+              <div className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-4">СТОИМОСТЬ</div>
+              <div className="text-8xl font-black text-white tracking-tighter flex items-center justify-center gap-4">
+                {selectedPlan?.price_eur.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}
+                <span className="text-4xl text-white/40 font-black tracking-normal">€</span>
+              </div>
+            </div>
 
             <button
-              onClick={() => handlePurchase(plan.id)}
-              disabled={purchasing === plan.id}
-              className={`w-full py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.3em] transition-all ${
-                plan.is_popular
-                  ? 'bg-white text-indigo-600 hover:bg-indigo-50'
-                  : 'bg-white/10 text-white hover:bg-white/20'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              onClick={handlePurchase}
+              disabled={purchasing !== null}
+              className="w-full bg-gradient-to-r from-[#5a46e5] to-[#a846e5] hover:brightness-110 text-white font-black py-7 rounded-3xl text-2xl transition-all shadow-[0_15px_50px_rgba(110,70,229,0.4)] active:scale-[0.98] disabled:opacity-50"
             >
-              {purchasing === plan.id ? 'Загрузка...' : 'Выбрать тариф'}
+              {purchasing ? 'ОБРАБОТКА...' : 'Купить кредиты'}
             </button>
+            
+            <p className="mt-10 text-[10px] text-white/10 font-black uppercase tracking-[0.4em]">
+              МГНОВЕННОЕ НАЧИСЛЕНИЕ • БЕЗ СКРЫТЫХ КОМИССИЙ
+            </p>
           </div>
-        ))}
-      </div>
-
-      {/* Информация об оплате */}
-      <div className="bg-black/40 border border-white/5 rounded-[40px] p-12">
-        <h3 className="text-sm font-black text-white uppercase tracking-[0.3em] mb-10 border-b border-white/5 pb-6 text-center">Информация об оплате</h3>
-        <div className="grid md:grid-cols-2 gap-12 text-center md:text-left">
-           <div>
-              <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Безопасная оплата</h4>
-              <p className="text-xs text-white/30 font-medium leading-relaxed uppercase tracking-widest">
-                Все транзакции обрабатываются через Telegram Tribute API. 
-                Зашифровано и децентрализовано для вашей конфиденциальности.
-              </p>
-           </div>
-           <div>
-              <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Мгновенное начисление</h4>
-              <p className="text-xs text-white/30 font-medium leading-relaxed uppercase tracking-widest">
-                Кредиты добавляются на ваш баланс сразу после подтверждения оплаты. 
-                Ручное одобрение не требуется.
-              </p>
-           </div>
         </div>
+        </div>
+      )}
 
-        <div className="mt-12 pt-8 border-t border-white/5 flex justify-center">
+      {/* Текущий баланс */}
+      <div className="mt-24 flex flex-col items-center">
+        <div className="bg-[#0c0c0e] border border-white/5 rounded-[32px] p-10 px-16 flex items-center gap-16 backdrop-blur-xl">
+          <div className="flex flex-col">
+            <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-3">ВАШ ТЕКУЩИЙ БАЛАНС</div>
+            <div className="flex items-baseline gap-3">
+              <span className="text-5xl font-black text-white tracking-tighter">
+                {user?.balance?.credits || 0}
+              </span>
+              <span className="text-xs font-black text-white/10 uppercase tracking-[0.3em]">КРЕДИТОВ</span>
+            </div>
+          </div>
+          <div className="w-px h-16 bg-white/5"></div>
           <Link
             href="/dashboard/payment-history"
-            className="text-[10px] font-black text-white/20 hover:text-white uppercase tracking-[0.3em] transition-colors"
+            className="text-[10px] font-black text-[#5a46e5] hover:text-[#7a66ff] uppercase tracking-[0.4em] transition-all flex items-center gap-2 group"
           >
-            Просмотреть историю транзакций →
+            ИСТОРИЯ ТРАНЗАКЦИЙ 
+            <span className="group-hover:translate-x-1 transition-transform">→</span>
           </Link>
         </div>
       </div>
     </div>
   );
 }
+
 

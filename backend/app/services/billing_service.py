@@ -16,44 +16,50 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-# Константы планов
+# Константы планов (теперь пакеты кредитов)
 PLANS = {
-    "plan_free": {
-        "id": "plan_free",
-        "name": "FREE",
-        "price_eur": Decimal("0.00"),
-        "credits": 50,
-        "duration_days": None,
-        "description": "Бесплатный тестовый тариф"
+    "credit_500": {
+        "id": "credit_500",
+        "name": "500 Credits",
+        "price_eur": Decimal("1.05"),
+        "credits": 500,
+        "price_per_credit": Decimal("0.0021"),
+        "duration_days": 365,  # Кредиты не сгорают быстро
+        "description": "Базовый пакет кредитов",
+        "tribute_link": "https://tribute.to/your-bot?product=credit_500"  # Замените на реальную ссылку
     },
-    "plan_basic": {
-        "id": "plan_basic",
-        "name": "BASIC",
-        "price_eur": Decimal("3.00"),
+    "credit_1000": {
+        "id": "credit_1000",
+        "name": "1000 Credits",
+        "price_eur": Decimal("1.68"),
         "credits": 1000,
-        "price_per_credit": Decimal("0.003"),
-        "duration_days": 30,
-        "description": "Подходит для начинающих"
+        "price_per_credit": Decimal("0.00168"),
+        "duration_days": 365,
+        "discount_percent": 20,
+        "description": "Популярный пакет кредитов",
+        "tribute_link": "https://tribute.to/your-bot?product=credit_1000"
     },
-    "plan_standard": {
-        "id": "plan_standard",
-        "name": "STANDARD",
-        "price_eur": Decimal("10.00"),
+    "credit_2000": {
+        "id": "credit_2000",
+        "name": "2000 Credits",
+        "price_eur": Decimal("3.36"),
+        "credits": 2000,
+        "price_per_credit": Decimal("0.00168"),
+        "duration_days": 365,
+        "discount_percent": 20,
+        "description": "Выгодный пакет кредитов",
+        "tribute_link": "https://tribute.to/your-bot?product=credit_2000"
+    },
+    "credit_5000": {
+        "id": "credit_5000",
+        "name": "5000 Credits",
+        "price_eur": Decimal("6.30"),
         "credits": 5000,
-        "price_per_credit": Decimal("0.002"),
-        "duration_days": 30,
-        "discount_percent": 33,
-        "description": "Самый популярный тариф"
-    },
-    "plan_pro": {
-        "id": "plan_pro",
-        "name": "PRO",
-        "price_eur": Decimal("17.00"),
-        "credits": 10000,
-        "price_per_credit": Decimal("0.0017"),
-        "duration_days": 30,
-        "discount_percent": 50,
-        "description": "Для профессионалов"
+        "price_per_credit": Decimal("0.00126"),
+        "duration_days": 365,
+        "discount_percent": 40,
+        "description": "Максимальная выгода",
+        "tribute_link": "https://tribute.to/your-bot?product=credit_5000"
     }
 }
 
@@ -109,38 +115,29 @@ class BillingService:
         db.flush()
         
         # Создать платеж в Tribute
-        if not settings.TRIBUTE_API_KEY:
-            logger.warning("TRIBUTE_API_KEY not configured, skipping payment creation")
-            return {
-                "payment_id": str(transaction.id),
-                "payment_url": f"https://tribute.to/payment/{transaction.id}",
-                "plan": plan["name"],
-                "amount": plan["price_eur"],
-                "currency": "EUR",
-                "expires_at": datetime.utcnow() + timedelta(hours=1)
-            }
+        # Мы используем ссылки из настроек планов, добавляя user_id для отслеживания
+        tribute_url = plan.get("tribute_link", "https://tribute.to/your-bot")
         
-        try:
-            # TODO: Интеграция с Tribute API
-            # Сейчас возвращаем mock данные
-            payment_url = f"https://tribute.to/yourdomain/pay_{transaction.id}"
+        # Если ссылка ведет на бота, добавляем start параметр с ID пользователя
+        if "?" in tribute_url:
+            payment_url = f"{tribute_url}&user_id={user.id}"
+        else:
+            # Для чистых ссылок добавляем как первый параметр
+            # ВНИМАНИЕ: Для Tribute.to это может потребовать ручного ввода ID пользователем
+            # если не используется создание инвойса через API
+            payment_url = f"{tribute_url}?user_id={user.id}"
             
-            transaction.payment_id = f"tribute_{transaction.id}"
-            db.commit()
-            
-            return {
-                "payment_id": str(transaction.id),
-                "payment_url": payment_url,
-                "plan": plan["name"],
-                "amount": plan["price_eur"],
-                "currency": "EUR",
-                "expires_at": datetime.utcnow() + timedelta(hours=1)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error creating Tribute payment: {e}")
-            db.rollback()
-            raise
+        transaction.payment_id = f"tribute_pending_{transaction.id}"
+        db.commit()
+        
+        return {
+            "payment_id": str(transaction.id),
+            "payment_url": payment_url,
+            "plan": plan["name"],
+            "amount": plan["price_eur"],
+            "currency": "EUR",
+            "expires_at": datetime.utcnow() + timedelta(hours=1)
+        }
     
     @staticmethod
     def get_user_transactions(

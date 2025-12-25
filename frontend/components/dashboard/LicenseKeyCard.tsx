@@ -48,12 +48,13 @@ export function LicenseKeyCard() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-indigo-900/60 via-purple-900/50 to-indigo-900/60 border-2 border-indigo-500/30 rounded-3xl p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm">
+    <div className="bg-gradient-to-br from-indigo-900/60 via-purple-900/50 to-indigo-900/60 border-2 border-indigo-500/30 rounded-3xl p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm h-full flex flex-col">
       <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-3xl -z-10"></div>
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/20 blur-3xl -z-10"></div>
       
       <h3 className="text-sm font-black tracking-[0.2em] text-indigo-300 uppercase mb-8 drop-shadow-lg">Авторизация лицензии</h3>
       
+      <div className="flex-1 flex flex-col">
       {isLoading ? (
         <div className="bg-black/70 border-2 border-indigo-500/30 rounded-2xl p-6 text-center text-indigo-200 text-sm font-medium">
           Загрузка...
@@ -91,8 +92,9 @@ export function LicenseKeyCard() {
           ⚠️ У вас нет лицензионного ключа. Нажмите "Создать ключ" чтобы создать.
         </div>
       )}
+      </div>
       
-      <div className="mt-6 flex items-center justify-center gap-4">
+      <div className="mt-auto pt-6 flex items-center justify-center gap-4">
         <button 
           onClick={handleRegenerate}
           disabled={generateKeyMutation.isPending || isLoading}

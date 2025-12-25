@@ -16,9 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port
-EXPOSE 8000
+# Expose port (Railway использует переменную PORT)
+EXPOSE ${PORT:-8000}
 
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run application (используем PORT из переменных окружения для Railway)
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
