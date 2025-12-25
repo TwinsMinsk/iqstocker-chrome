@@ -3,6 +3,8 @@ Database session management
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.engine.url import make_url
+from urllib.parse import unquote
 from app.core.config import settings
 
 # Определяем DATABASE_URL в зависимости от настроек
@@ -17,7 +19,27 @@ if settings.USE_SQLITE:
     pool_size = None
     max_overflow = None
 else:
-    connect_args = {}
+    # Для PostgreSQL на Windows используем кастомный creator, чтобы избежать UnicodeDecodeError
+    try:
+        url_obj = make_url(database_url)
+        
+        def get_conn():
+            import psycopg2
+            return psycopg2.connect(
+                user=unquote(url_obj.username or ""),
+                password=unquote(url_obj.password or ""),
+                host=url_obj.host,
+                port=url_obj.port or 5432,
+                database=url_obj.database,
+                client_encoding="utf8"
+            )
+            
+        engine_kwargs["creator"] = get_conn
+        # Для PostgreSQL используем пустой URL, так как параметры в creator
+        database_url = "postgresql://"
+    except Exception:
+        pass
+    
     pool_pre_ping = True
     pool_size = 10
     max_overflow = 20

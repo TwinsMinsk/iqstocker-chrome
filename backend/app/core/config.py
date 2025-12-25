@@ -3,8 +3,11 @@
 Использует Pydantic Settings для загрузки переменных окружения
 """
 from pydantic_settings import BaseSettings
+from pydantic import field_validator, Field
 from typing import List
 from functools import lru_cache
+import os
+import json
 
 
 class Settings(BaseSettings):
@@ -15,6 +18,30 @@ class Settings(BaseSettings):
     # DATABASE_URL: str = "sqlite:///./iqstocker.db"
     # Для production используйте PostgreSQL:
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/iqstocker_auto"
+    
+    @field_validator('DATABASE_URL', mode='before')
+    @classmethod
+    def normalize_database_url(cls, v):
+        """
+        Нормализует DATABASE_URL, обрабатывая проблемы с кодировкой.
+        Исправляет UnicodeDecodeError при работе с переменными окружения Railway.
+        """
+        if v is None:
+            return v
+        
+        # Если это байты, декодируем в UTF-8 с обработкой ошибок
+        if isinstance(v, bytes):
+            try:
+                return v.decode('utf-8')
+            except UnicodeDecodeError:
+                # Пытаемся другие кодировки, если UTF-8 не работает
+                try:
+                    return v.decode('latin-1')
+                except:
+                    return v.decode('utf-8', errors='replace')
+        
+        # Убеждаемся, что это строка
+        return str(v)
     REDIS_URL: str | None = None  # Опционально, можно обойтись без Redis на начальном этапе
     
     # Использовать SQLite для разработки (если нет Docker/PostgreSQL)
@@ -45,8 +72,88 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
+    # Храним как строку, чтобы избежать автоматического JSON парсинга Pydantic
+    # Используем property для получения списка
+    cors_origins_str: str = Field(
+        default='["http://localhost:3000", "http://localhost:3001"]',
+        alias="CORS_ORIGINS",
+        description="CORS allowed origins (JSON array, comma-separated string, or single URL)"
+    )
+    allowed_hosts_str: str = Field(
+        default='["localhost", "127.0.0.1"]',
+        alias="ALLOWED_HOSTS",
+        description="Allowed hosts (JSON array, comma-separated string, or single host)"
+    )
+    
+    @field_validator('cors_origins_str', mode='before')
+    @classmethod
+    def parse_cors_origins_str(cls, v):
+        """Парсит CORS_ORIGINS как строку"""
+        if v is None:
+            return '["http://localhost:3000", "http://localhost:3001"]'
+        
+        # Если это уже список (из дефолтного значения), конвертируем в JSON строку
+        if isinstance(v, list):
+            return json.dumps(v)
+        
+        # Если это строка, возвращаем как есть
+        return str(v) if v else '["http://localhost:3000", "http://localhost:3001"]'
+    
+    @field_validator('allowed_hosts_str', mode='before')
+    @classmethod
+    def parse_allowed_hosts_str(cls, v):
+        """Парсит ALLOWED_HOSTS как строку"""
+        if v is None:
+            return '["localhost", "127.0.0.1"]'
+        
+        # Если это уже список (из дефолтного значения), конвертируем в JSON строку
+        if isinstance(v, list):
+            return json.dumps(v)
+        
+        # Если это строка, возвращаем как есть
+        return str(v) if v else '["localhost", "127.0.0.1"]'
+    
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        """Возвращает CORS_ORIGINS как список"""
+        value = self.cors_origins_str.strip()
+        if not value:
+            return ["http://localhost:3000", "http://localhost:3001"]
+        
+        # Пробуем распарсить как JSON
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed if item]
+            return [str(parsed)] if parsed else ["http://localhost:3000", "http://localhost:3001"]
+        except (json.JSONDecodeError, ValueError, TypeError):
+            # Если не JSON, пробуем разделить по запятой
+            if ',' in value:
+                origins = [origin.strip() for origin in value.split(',') if origin.strip()]
+                return origins if origins else ["http://localhost:3000", "http://localhost:3001"]
+            # Если один элемент, возвращаем как список
+            return [value] if value else ["http://localhost:3000", "http://localhost:3001"]
+    
+    @property
+    def ALLOWED_HOSTS(self) -> List[str]:
+        """Возвращает ALLOWED_HOSTS как список"""
+        value = self.allowed_hosts_str.strip()
+        if not value:
+            return ["localhost", "127.0.0.1"]
+        
+        # Пробуем распарсить как JSON
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed if item]
+            return [str(parsed)] if parsed else ["localhost", "127.0.0.1"]
+        except (json.JSONDecodeError, ValueError, TypeError):
+            # Если не JSON, пробуем разделить по запятой
+            if ',' in value:
+                hosts = [host.strip() for host in value.split(',') if host.strip()]
+                return hosts if hosts else ["localhost", "127.0.0.1"]
+            # Если один элемент, возвращаем как список
+            return [value] if value else ["localhost", "127.0.0.1"]
     
     # API
     API_V1_PREFIX: str = "/api/v1"
@@ -85,6 +192,11 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        # Отключаем автоматический JSON парсинг для List полей
+        # чтобы валидаторы могли обработать строки
+        json_encoders = {
+            List[str]: lambda v: v if isinstance(v, list) else json.loads(v) if isinstance(v, str) else v
+        }
 
 
 @lru_cache()
