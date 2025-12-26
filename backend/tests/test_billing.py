@@ -26,7 +26,7 @@ def test_purchase_plan(authenticated_client):
     """Тест покупки плана"""
     response = authenticated_client.post(
         "/api/v1/subscriptions/purchase-plan",
-        json={"plan_id": "plan_basic"}
+        json={"plan_id": "credit_500"}
     )
     
     assert response.status_code == status.HTTP_200_OK
@@ -34,7 +34,7 @@ def test_purchase_plan(authenticated_client):
     assert "payment_id" in data
     assert "payment_url" in data
     assert "plan" in data
-    assert data["plan"] == "BASIC"
+    assert data["plan"] == "500 Credits"
 
 
 def test_purchase_invalid_plan(authenticated_client):

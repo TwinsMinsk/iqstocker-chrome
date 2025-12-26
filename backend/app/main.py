@@ -45,21 +45,22 @@ app.add_middleware(
 # TrustedHostMiddleware - на Railway может вызывать проблемы с 400 Bad Request
 # если HOST заголовок не совпадает. Разрешаем все хосты, если в настройках "*"
 allowed_hosts = settings.ALLOWED_HOSTS
-if "*" in allowed_hosts:
-    allowed_hosts = ["*"]
 
 if settings.ENVIRONMENT != "test":
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=allowed_hosts
-    )
+    # Если в списке есть "*", отключаем middleware совсем, так как Starlette не поддерживает "*"
+    if "*" not in allowed_hosts:
+        app.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=allowed_hosts
+        )
 else:
     # В тестовом окружении добавляем "testserver" в allowed_hosts
     test_allowed_hosts = list(allowed_hosts) + ["testserver"]
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=test_allowed_hosts
-    )
+    if "*" not in test_allowed_hosts:
+        app.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=test_allowed_hosts
+        )
 
 # Routes
 app.include_router(v1_router, prefix=settings.API_V1_PREFIX)

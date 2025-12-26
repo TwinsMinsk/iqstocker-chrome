@@ -284,6 +284,104 @@ class PaymentService:
             return "credit_5000"  # Или маппинг на что-то другое
             
         return None
+    
+    @staticmethod
+    async def _handle_cancelled_subscription(
+        db: Session,
+        payload: Dict
+    ) -> Dict:
+        """
+        Обработать отмену подписки от Tribute
+        
+        Args:
+            db: Database session
+            payload: Данные события отмены подписки
+        
+        Returns:
+            Dict с результатом обработки
+        """
+        # Получаем идентификаторы из payload
+        telegram_user_id = payload.get("telegram_user_id")
+        period_id = payload.get("period_id") or payload.get("payment_id")
+        
+        # Поиск пользователя
+        target_user = None
+        from app.models.user import User
+        
+        # 1. По telegram_user_id
+        if telegram_user_id:
+            target_user = db.query(User).filter(
+                User.telegram_user_id == str(telegram_user_id)
+            ).first()
+        
+        # 2. По email (если передан)
+        if not target_user and payload.get("email"):
+            target_user = db.query(User).filter(
+                User.email == payload.get("email")
+            ).first()
+        
+        if not target_user:
+            logger.warning(f"User not found for cancelled subscription: {payload}")
+            return {
+                "status": "error",
+                "message": "User not found"
+            }
+        
+        # Найти активную подписку пользователя
+        subscription = db.query(Subscription).filter(
+            Subscription.user_id == target_user.id,
+            Subscription.status == "active"
+        ).first()
+        
+        if subscription:
+            # Помечаем подписку как отмененную
+            subscription.status = "cancelled"
+            subscription.subscription_expires_at = datetime.utcnow()
+            
+            # Найти связанную транзакцию (если есть)
+            if period_id:
+                transaction = db.query(Transaction).filter(
+                    Transaction.payment_id == str(period_id),
+                    Transaction.user_id == target_user.id
+                ).first()
+                
+                if transaction:
+                    transaction.status = "cancelled"
+            
+            db.commit()
+            
+            logger.info(f"Cancelled subscription for user {target_user.id}")
+            
+            # Отправить email уведомление
+            if email_service:
+                try:
+                    email_service.send_email(
+                        to_email=target_user.email,
+                        subject="Подписка отменена - Midjourney Auto",
+                        html_content="""
+                        <html>
+                        <body>
+                            <h2>Подписка отменена</h2>
+                            <p>Ваша подписка была отменена.</p>
+                            <p>Оставшиеся кредиты будут доступны до истечения срока действия подписки.</p>
+                            <p>Спасибо за использование нашего сервиса!</p>
+                        </body>
+                        </html>
+                        """
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send cancellation email: {e}")
+            
+            return {
+                "status": "ok",
+                "message": "Subscription cancelled successfully"
+            }
+        else:
+            logger.warning(f"No active subscription found for user {target_user.id}")
+            return {
+                "status": "ignored",
+                "message": "No active subscription found"
+            }
 
 
 # Глобальный экземпляр
