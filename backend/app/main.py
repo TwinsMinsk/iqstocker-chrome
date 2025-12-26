@@ -29,26 +29,14 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# Middleware
-origins = settings.CORS_ORIGINS
-# Если в списке есть "*", то allow_credentials должно быть False
-allow_all_origins = "*" in origins
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=not allow_all_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # TrustedHostMiddleware - на Railway может вызывать проблемы с 400 Bad Request
 # если HOST заголовок не совпадает. Разрешаем все хосты, если в настройках "*"
 allowed_hosts = settings.ALLOWED_HOSTS
 
 if settings.ENVIRONMENT != "test":
-    # Если в списке есть "*", отключаем middleware совсем, так как Starlette не поддерживает "*"
-    if "*" not in allowed_hosts:
+    # В production (Railway) TrustedHostMiddleware часто ломает preflight (OPTIONS) из-за Host заголовков прокси.
+    # Поэтому в production мы его отключаем полностью.
+    if settings.ENVIRONMENT != "production" and "*" not in allowed_hosts:
         app.add_middleware(
             TrustedHostMiddleware,
             allowed_hosts=allowed_hosts
@@ -61,6 +49,23 @@ else:
             TrustedHostMiddleware,
             allowed_hosts=test_allowed_hosts
         )
+
+# CORS middleware добавляем ПОСЛЕДНИМ, чтобы он был внешним (outermost) и добавлял заголовки даже на ошибочные ответы.
+# Это критично для preflight запросов (OPTIONS), иначе браузер блокирует запросы как CORS.
+#
+# В production на Railway разрешаем все origins, чтобы гарантированно убрать блокировку регистрации.
+# (Позже можно сузить до конкретного домена фронтенда через переменную CORS_ORIGINS.)
+origins = ["*"] if settings.ENVIRONMENT == "production" else settings.CORS_ORIGINS
+# Если в списке есть "*", то allow_credentials должно быть False (требование CORS спецификации)
+allow_all_origins = "*" in origins
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=not allow_all_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Routes
 app.include_router(v1_router, prefix=settings.API_V1_PREFIX)

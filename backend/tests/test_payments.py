@@ -20,6 +20,7 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
     # Нужно обновить settings в обоих местах, так как они могут быть кэшированы
     from app.core.config import settings, get_settings
     import app.services.payment_service
+    from app.models.user import User
     
     # Очищаем кэш settings
     get_settings.cache_clear()
@@ -29,6 +30,18 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
     # Также обновляем в payment_service, если он уже импортирован
     if hasattr(app.services.payment_service, 'settings'):
         monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    
+    # Создаем тестового пользователя с telegram_user_id
+    test_user = User(
+        email="test@example.com",
+        password_hash="test_hash",
+        telegram_user_id="123456789",
+        email_verified=True,
+        is_active=True
+    )
+    db.add(test_user)
+    db.commit()
+    db.refresh(test_user)
     
     # Данные webhook
     webhook_data = {
@@ -43,11 +56,14 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
             "price": 1000,  # в центах
             "amount": 1000,
             "currency": "eur",
-            "user_id": 9999,
+            "user_id": str(test_user.id),  # Используем реальный ID пользователя
             "telegram_user_id": 123456789,
             "channel_id": 100,
             "channel_name": "midjourney_auto",
-            "expires_at": "2026-01-22T10:00:00Z"
+            "expires_at": "2026-01-22T10:00:00Z",
+            "custom_data": {
+                "user_id": str(test_user.id)  # Добавляем user_id в custom_data для поиска
+            }
         }
     }
     
@@ -117,6 +133,8 @@ def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secr
     # ВАЖНО: Устанавливаем секрет в настройках
     from app.core.config import settings, get_settings
     import app.services.payment_service
+    from app.models.user import User
+    from app.models.subscription import Subscription
     
     # Очищаем кэш settings
     get_settings.cache_clear()
@@ -126,6 +144,28 @@ def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secr
     # Также обновляем в payment_service, если он уже импортирован
     if hasattr(app.services.payment_service, 'settings'):
         monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    
+    # Создаем тестового пользователя с telegram_user_id
+    test_user = User(
+        email="test_cancel@example.com",
+        password_hash="test_hash",
+        telegram_user_id="123456789",
+        email_verified=True,
+        is_active=True
+    )
+    db.add(test_user)
+    db.commit()
+    db.refresh(test_user)
+    
+    # Создаем активную подписку для пользователя
+    subscription = Subscription(
+        user_id=test_user.id,
+        plan_id="credit_1000",
+        status="active",
+        credits_balance=100
+    )
+    db.add(subscription)
+    db.commit()
     
     webhook_data = {
         "name": "cancelled_subscription",
@@ -139,7 +179,7 @@ def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secr
             "price": 1000,
             "amount": 1000,
             "currency": "eur",
-            "user_id": 9999,
+            "user_id": str(test_user.id),  # Используем реальный ID пользователя
             "telegram_user_id": 123456789,
             "channel_id": 100,
             "channel_name": "midjourney_auto",
