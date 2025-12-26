@@ -274,13 +274,41 @@ async function ensureContentScript(tabId: number): Promise<void> {
   }
 }
 
+// Глобальная переменная для хранения текущего listener поиска
+let currentSearchListener: ((message: any) => void) | null = null;
+let searchListenerTimeout: number | null = null;
+
 /**
  * Установка слушателя для результатов поиска
  */
 function setupStatusListener(): void {
-  const listener = (message: any) => {
+  // Удаляем предыдущий listener если он есть
+  if (currentSearchListener) {
+    chrome.runtime.onMessage.removeListener(currentSearchListener);
+    currentSearchListener = null;
+  }
+  
+  // Очищаем предыдущий таймаут
+  if (searchListenerTimeout !== null) {
+    clearTimeout(searchListenerTimeout);
+    searchListenerTimeout = null;
+  }
+  
+  currentSearchListener = (message: any) => {
+    // Обрабатываем только TEST_RESULT сообщения
     if (message.type === 'TEST_RESULT') {
-      chrome.runtime.onMessage.removeListener(listener);
+      // Удаляем listener сразу при получении результата
+      if (currentSearchListener) {
+        chrome.runtime.onMessage.removeListener(currentSearchListener);
+        currentSearchListener = null;
+      }
+      
+      // Очищаем таймаут
+      if (searchListenerTimeout !== null) {
+        clearTimeout(searchListenerTimeout);
+        searchListenerTimeout = null;
+      }
+      
       if (message.found) {
         if (message.selector) {
           settingsState.discordStatus = `✅ Найдено! Селектор: ${message.selector}`;
@@ -299,7 +327,22 @@ function setupStatusListener(): void {
       }, 8000);
     }
   };
-  chrome.runtime.onMessage.addListener(listener);
+  
+  chrome.runtime.onMessage.addListener(currentSearchListener);
+  
+  // Таймаут для удаления listener если ответ не пришел
+  searchListenerTimeout = window.setTimeout(() => {
+    if (currentSearchListener) {
+      chrome.runtime.onMessage.removeListener(currentSearchListener);
+      currentSearchListener = null;
+      searchListenerTimeout = null;
+      // Сбрасываем статус если ответ не пришел
+      if (settingsState.discordStatus === 'Авто-поиск...' || settingsState.discordStatus === 'Выберите элемент...') {
+        settingsState.discordStatus = null;
+        render();
+      }
+    }
+  }, 30000); // 30 секунд таймаут
 }
 
 /**
@@ -649,11 +692,6 @@ function render(): void {
     
     <div class="section settings-section">
       <h3>⚙️ Настройки</h3>
-      
-      <div class="api-info" style="font-size: 11px; color: #888; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;">
-        <div style="margin-bottom: 4px;"><strong>API:</strong> Production (Railway)</div>
-        <div style="font-size: 10px; word-break: break-all;">backend-production-40040.up.railway.app</div>
-      </div>
       
       <button 
         id="reset-settings-btn" 

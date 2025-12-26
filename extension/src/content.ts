@@ -1031,6 +1031,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // TEST_INPUT — проверка что поле ввода найдено или активация picker
   if (message?.type === 'TEST_INPUT') {
+    // Обрабатываем асинхронно, но не используем sendResponse
+    // Вместо этого отправляем ответ через chrome.runtime.sendMessage
+    // Не возвращаем true, так как мы не используем sendResponse
     (async () => {
       try {
         // Если запрошен режим выбора элемента (Ручной-поиск)
@@ -1054,6 +1057,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             found: true,
             selector: selector,
             message: '✅ Поле найдено автоматически!'
+          }).catch(() => {
+            // Игнорируем ошибки если popup закрыт
           });
         } else {
           showToast('❌ Авто-поиск не удался. Используйте ручной выбор.', true);
@@ -1061,6 +1066,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             type: 'TEST_RESULT',
             found: false,
             message: '❌ Поле не найдено автоматически.'
+          }).catch(() => {
+            // Игнорируем ошибки если popup закрыт
           });
         }
       } catch (e: any) {
@@ -1069,10 +1076,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           type: 'TEST_RESULT',
           found: false,
           error: e?.message || 'Unknown error'
+        }).catch(() => {
+          // Игнорируем ошибки если popup закрыт
         });
       }
     })();
-    return true;
+    // Не возвращаем значение - ответ отправляется через chrome.runtime.sendMessage
+    // Это предотвращает ошибку "listener indicated an asynchronous response"
+    return;
   }
   
   // DEACTIVATE_PICKER — деактивация picker

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersAPI } from '@/services/api/users';
 import Link from 'next/link';
+import { Modal } from '@/components/common/Modal';
 
 export function LicenseKeyCard() {
   const [copied, setCopied] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Получить полный профиль пользователя (включая license_key)
@@ -107,15 +109,50 @@ export function LicenseKeyCard() {
           {generateKeyMutation.isPending ? '⏳ Генерация...' : hasKey ? '🔄 Обновить ключ' : '✨ Создать ключ'}
         </button>
         <div className="w-1 h-1 rounded-full bg-indigo-400/50"></div>
-        <a 
-          href="https://github.com/your-repo/docs" 
-          target="_blank" 
-          rel="noopener noreferrer"
+        <button 
+          onClick={() => setIsModalOpen(true)}
           className="text-xs font-bold text-indigo-300 hover:text-indigo-100 transition-colors uppercase tracking-[0.2em] px-3 py-2 rounded-lg hover:bg-indigo-900/30"
         >
           📖 Инструкция
-        </a>
+        </button>
       </div>
+
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title="Активация лицензии"
+      >
+        <div className="space-y-6 text-white/70">
+          <p className="text-lg leading-relaxed font-light">
+            Лицензионный ключ необходим для авторизации вашего расширения в системе. Следуйте этим простым шагам:
+          </p>
+          
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">1</div>
+              <p className="leading-relaxed">Нажмите кнопку <span className="text-indigo-300 font-bold">"КОПИРОВАТЬ КЛЮЧ"</span> на этой карточке.</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">2</div>
+              <p className="leading-relaxed">Откройте расширение <span className="text-white font-bold">IQStocker Auto</span> в панели расширений вашего браузера Chrome.</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">3</div>
+              <p className="leading-relaxed">Вставьте скопированный ключ в поле <span className="text-white font-bold">"Лицензионный ключ"</span> в окне расширения.</p>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">4</div>
+              <p className="leading-relaxed">Нажмите кнопку <span className="text-green-400 font-bold">"Применить"</span>.</p>
+            </div>
+          </div>
+
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-6 mt-8">
+            <p className="text-sm text-indigo-300 font-medium">
+              💡 Ключ привязывается к вашему аккаунту. Не передавайте его третьим лицам. Вы можете обновить ключ в любое время, нажав кнопку "Обновить ключ".
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
