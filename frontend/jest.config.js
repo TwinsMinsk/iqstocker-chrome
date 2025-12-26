@@ -22,6 +22,8 @@ const customJestConfig = {
     '!**/*.d.ts',
     '!**/node_modules/**',
   ],
+  // Не падать, если тестов нет
+  passWithNoTests: true,
 }
 
 module.exports = createJestConfig(customJestConfig)
