@@ -16,9 +16,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port (Railway использует переменную PORT)
-EXPOSE ${PORT:-8000}
+# Копируем скрипты запуска
+COPY start.sh /app/start.sh
+COPY start.py /app/start.py
+RUN chmod +x /app/start.sh /app/start.py
 
-# Run application (используем PORT из переменных окружения для Railway)
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Expose port (Railway использует переменную PORT)
+EXPOSE 8000
+
+# Run application через Python скрипт, который правильно обрабатывает PORT
+# Используем Python скрипт как более надежный вариант
+CMD ["python", "/app/start.py"]
 

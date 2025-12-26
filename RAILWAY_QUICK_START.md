@@ -23,8 +23,19 @@ git push origin main
 
 ### 1.2. Сгенерируйте секретные ключи
 
+**Windows (PowerShell):**
+```powershell
+# Выполните 3 раза
+-join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object {[char]$_})
+```
+
+**Или Python:**
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**Linux/Mac:**
 ```bash
-# Выполните 3 раза для разных ключей
 openssl rand -hex 32
 ```
 

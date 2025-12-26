@@ -165,8 +165,18 @@ TRIBUTE_WEBHOOK_SECRET=your-tribute-webhook-secret
 
 **Как сгенерировать секретные ключи:**
 
+**Windows (PowerShell):**
+```powershell
+-join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object {[char]$_})
+```
+
+**Или Python:**
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**Linux/Mac:**
 ```bash
-# В терминале
 openssl rand -hex 32
 ```
 

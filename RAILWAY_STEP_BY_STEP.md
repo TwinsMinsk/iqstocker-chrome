@@ -34,11 +34,25 @@ git push origin main
 
 ### 1.2. Сгенерируйте секретные ключи
 
-Откройте терминал и выполните **3 раза**:
+**Для Windows (PowerShell):**
 
-```bash
-openssl rand -hex 32
+Выполните в PowerShell **3 раза**:
+
+```powershell
+-join ((48..57) + (97..102) | Get-Random -Count 64 | ForEach-Object {[char]$_})
 ```
+
+**Или используйте Python (если установлен):**
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+**Или установите OpenSSL для Windows:**
+
+1. Скачайте: https://slproweb.com/products/Win32OpenSSL.html
+2. Установите
+3. Затем используйте: `openssl rand -hex 32`
 
 **Сохраните 3 ключа:**
 - Ключ 1 → для `SECRET_KEY` (Backend)
