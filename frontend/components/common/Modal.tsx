@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,8 +11,14 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const [mounted, setMounted] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Убеждаемся, что компонент смонтирован (для SSR)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -19,6 +26,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     };
     
     if (isOpen) {
+      // Блокируем скролл страницы
       document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleEsc);
       
@@ -29,6 +37,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     }
     
     return () => {
+      // Восстанавливаем скролл страницы
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleEsc);
     };
@@ -39,31 +48,33 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     e.stopPropagation();
   };
 
-  if (!isOpen) return null;
+  if (!mounted || !isOpen) return null;
 
-  return (
+  // Используем Portal для рендеринга модалки напрямую в body
+  // Это гарантирует, что модалка не будет ограничена родительскими контейнерами
+  return createPortal(
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-8"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      {/* Overlay */}
+      {/* Overlay - затемнение фона */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity"
+        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal Content */}
       <div 
         ref={modalRef}
-        className="relative bg-[#0d0d12] border border-white/10 w-full max-w-2xl max-h-[90vh] rounded-[32px] shadow-2xl shadow-indigo-500/10 flex flex-col overflow-hidden"
+        className="relative bg-[#0d0d12] border border-white/10 w-full max-w-2xl max-h-[85vh] rounded-[32px] shadow-2xl shadow-indigo-500/10 flex flex-col overflow-hidden"
         onClick={handleContentClick}
         tabIndex={-1}
       >
         {/* Header - фиксированный */}
-        <div className="flex-shrink-0 bg-[#0d0d12]/95 backdrop-blur-md border-b border-white/5 p-6 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-[#0d0d12] border-b border-white/5 p-6 flex items-center justify-between z-10">
           <h3 id="modal-title" className="text-xl font-black text-white uppercase tracking-wider pr-4">
             {title}
           </h3>
@@ -81,7 +92,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         {/* Content - скроллируемый */}
         <div 
           ref={contentRef}
-          className="flex-1 overflow-y-auto overscroll-contain modal-scrollbar"
+          className="flex-1 overflow-y-auto overscroll-contain modal-scrollbar min-h-0"
           style={{ 
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(99, 102, 241, 0.3) transparent'
@@ -93,16 +104,17 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         </div>
         
         {/* Footer - фиксированный */}
-        <div className="flex-shrink-0 p-6 border-t border-white/5 bg-[#0d0d12]/95 backdrop-blur-md flex justify-end">
+        <div className="flex-shrink-0 p-6 border-t border-white/5 bg-[#0d0d12] flex justify-end z-10">
           <button 
             onClick={onClose}
-            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20"
+            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
           >
             Понятно
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // Рендерим напрямую в body, вне всех контейнеров
   );
 }
 
