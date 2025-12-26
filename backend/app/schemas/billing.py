@@ -116,6 +116,14 @@ class SubscriptionResponse(BaseModel):
     subscription_starts_at: Optional[datetime] = None
     subscription_expires_at: Optional[datetime] = None
     
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_id_to_string(cls, v):
+        """Конвертировать UUID в строку"""
+        if v is not None:
+            return str(v)
+        return v
+    
     class Config:
         from_attributes = True
 

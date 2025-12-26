@@ -178,6 +178,16 @@ class AuthService:
             Subscription или None
         """
         try:
+            # Проверяем, нет ли уже подписки у пользователя
+            existing = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+            if existing:
+                logger.info(f"Subscription already exists for user {user_id}, updating balance")
+                existing.credits_balance = 50
+                existing.status = "active"
+                existing.plan_id = "free"
+                db.flush()
+                return existing
+            
             subscription = Subscription(
                 user_id=user_id,
                 plan_id="free",
@@ -191,10 +201,11 @@ class AuthService:
             
             db.add(subscription)
             db.flush()
+            logger.info(f"Created free subscription for user {user_id} with 50 credits")
             return subscription
             
         except Exception as e:
-            logger.error(f"Error creating subscription: {e}")
+            logger.error(f"Error creating subscription for user {user_id}: {e}", exc_info=True)
             return None
     
     @staticmethod

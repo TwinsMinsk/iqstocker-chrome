@@ -70,14 +70,21 @@ async def get_my_subscription(
 ):
     """
     Получить текущую подписку пользователя
+    Если подписки нет, создается бесплатная подписка с 50 кредитами
     """
     subscription = billing_service.get_user_subscription(db, str(user.id))
     
     if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
-        )
+        # Создаем бесплатную подписку, если её нет
+        from app.services.auth_service import AuthService
+        subscription = AuthService.create_free_subscription(db, str(user.id))
+        if subscription:
+            db.commit()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create subscription"
+            )
     
     return SubscriptionResponse.model_validate(subscription)
 
