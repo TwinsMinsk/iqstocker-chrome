@@ -153,7 +153,7 @@ export default function HomePage() {
       </section>
 
       {/* FEATURES GRID */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
+      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-8 rounded-3xl bg-[#0f0f0f] border border-white/5 hover:border-indigo-500/30 transition-colors group">
@@ -198,7 +198,7 @@ export default function HomePage() {
       </section>
 
       {/* PRICING SECTION - CREDIT BASED */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/5 relative overflow-hidden">
+      <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/5 relative overflow-hidden">
         {/* Background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl h-[600px] bg-indigo-600/5 blur-[120px] rounded-full -z-10 pointer-events-none" />
         
@@ -283,7 +283,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
+      <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-white mb-12 text-center">Частые вопросы</h2>
           
