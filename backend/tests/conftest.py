@@ -9,8 +9,12 @@ from fastapi.testclient import TestClient
 
 # ВАЖНО: Устанавливаем переменные окружения ДО импорта app
 # чтобы избежать проблем с middleware и конфигурацией
-os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("DEBUG", "true")
+os.environ["ENVIRONMENT"] = "test"
+os.environ["DEBUG"] = "true"
+
+# Очищаем кэш settings, чтобы перезагрузить конфигурацию с новыми переменными окружения
+from app.core.config import get_settings
+get_settings.cache_clear()
 
 from app.db.base import Base
 from app.db.session import get_db
@@ -54,19 +58,14 @@ def client(db):
     app.dependency_overrides[get_db] = override_get_db
     
     # ВАЖНО: TestClient по умолчанию использует base_url="http://testserver"
-    # TrustedHostMiddleware может блокировать этот host
-    # Временно добавляем "testserver" в allowed_hosts для тестов
-    original_allowed_hosts = list(settings.ALLOWED_HOSTS)
-    if "testserver" not in settings.ALLOWED_HOSTS:
-        settings.ALLOWED_HOSTS = list(settings.ALLOWED_HOSTS) + ["testserver"]
+    # В main.py уже настроено добавление "testserver" в allowed_hosts для тестового окружения
+    # (когда ENVIRONMENT == "test"), поэтому здесь ничего менять не нужно
     
     try:
         # Используем base_url="http://testserver" чтобы соответствовать TrustedHostMiddleware
         with TestClient(app, base_url="http://testserver") as test_client:
             yield test_client
     finally:
-        # Восстанавливаем оригинальные allowed_hosts
-        settings.ALLOWED_HOSTS = original_allowed_hosts
         app.dependency_overrides.clear()
 
 

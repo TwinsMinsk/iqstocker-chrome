@@ -57,4 +57,5 @@ jobs:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         ENVIRONMENT: test
         DEBUG: "true"
+        ALLOWED_HOSTS: '["localhost", "127.0.0.1", "testserver"]'
 
