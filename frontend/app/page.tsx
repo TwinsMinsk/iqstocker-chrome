@@ -99,18 +99,18 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-bold tracking-widest text-green-300 uppercase">Система работает v2.0</span>
+            <span className="text-xs font-bold tracking-widest text-green-300 uppercase">Система работает</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8 leading-[1.1]">
             Автоматизируйте свой <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
-              Творческий процесс
+              Midjourney процесс
             </span>
           </h1>
 
           <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Полноценная автоматизация Midjourney. Очереди промптов, планировщик задач и управление галереей прямо в вашем браузере.
+            Полноценная автоматизация Midjourney прямо в вашем браузере.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -192,7 +192,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Экономия времени</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Загрузите 100 промптов и идите пить кофе. Система сама отправит их с нужной задержкой.
+                Загрузите более 100 промптов и идите пить кофе. Система сама отправит их с нужной задержкой.
               </p>
             </div>
           </div>

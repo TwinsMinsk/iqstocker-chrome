@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scrollbar для модальных окон */
+@layer utilities {
+  .modal-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 4px;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
