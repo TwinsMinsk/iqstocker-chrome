@@ -178,7 +178,7 @@ class Settings(BaseSettings):
     CACHE_PERMISSION_TTL: int = 300  # 5 minutes
     
     # Extension config defaults
-    DEFAULT_MIN_INTERVAL_MS: int = 60000  # 60 seconds
+    DEFAULT_MIN_INTERVAL_MS: int = 15000  # 15 seconds
     DEFAULT_MAX_INTERVAL_MS: int = 300000  # 5 minutes
     DEFAULT_MAX_RETRIES: int = 3
     

@@ -160,14 +160,52 @@ export async function startAutomation(
           
           // Использовать пользовательский диапазон, если указан
           if (options?.delayMinSeconds !== undefined && options?.delayMaxSeconds !== undefined) {
-            delayMs = getRandomDelay(options.delayMinSeconds, options.delayMaxSeconds);
-            console.log(`⏱️ Случайная задержка: ${Math.round(delayMs / 1000)} секунд`);
+            // Правильно объединяем пользовательский и серверный диапазоны
+            const userMinSec = options.delayMinSeconds;
+            const userMaxSec = options.delayMaxSeconds;
+            const serverMinMs = sessionConfig?.min_interval_ms;
+            const serverMaxMs = sessionConfig?.max_interval_ms;
+            
+            let finalMinSec: number;
+            let finalMaxSec: number;
+            
+            if (typeof serverMinMs === 'number' && Number.isFinite(serverMinMs)) {
+              const serverMinSec = serverMinMs / 1000;
+              const serverMaxSec = typeof serverMaxMs === 'number' && Number.isFinite(serverMaxMs)
+                ? serverMaxMs / 1000
+                : Infinity;
+              
+              // Объединяем диапазоны: берем максимум из минимумов и минимум из максимумов
+              finalMinSec = Math.max(userMinSec, serverMinSec);
+              finalMaxSec = Math.min(userMaxSec, serverMaxSec);
+              
+              // Если пользовательский диапазон полностью меньше серверного минимума,
+              // используем серверный диапазон (если есть максимум) или только минимум
+              if (finalMinSec > finalMaxSec) {
+                finalMinSec = serverMinSec;
+                finalMaxSec = Number.isFinite(serverMaxSec) ? serverMaxSec : serverMinSec * 2;
+              }
+            } else {
+              // Серверных ограничений нет - используем пользовательский диапазон
+              finalMinSec = userMinSec;
+              finalMaxSec = userMaxSec;
+            }
+            
+            delayMs = getRandomDelay(finalMinSec, finalMaxSec);
+            console.log(`⏱️ Случайная задержка: ${Math.round(delayMs / 1000)} сек (диапазон: ${Math.round(finalMinSec)}-${Math.round(finalMaxSec)} сек)`);
           } else if (sessionConfig) {
-            // Иначе использовать настройки с сервера
-            delayMs = sessionConfig.min_interval_ms;
+            // Использовать настройки с сервера с рандомизацией
+            const serverMinSec = sessionConfig.min_interval_ms / 1000;
+            const serverMaxSec = typeof sessionConfig.max_interval_ms === 'number' && Number.isFinite(sessionConfig.max_interval_ms)
+              ? sessionConfig.max_interval_ms / 1000
+              : serverMinSec * 2; // Если максимум не указан, используем минимум * 2
+            
+            delayMs = getRandomDelay(serverMinSec, serverMaxSec);
+            console.log(`⏱️ Случайная задержка: ${Math.round(delayMs / 1000)} сек (серверный диапазон: ${Math.round(serverMinSec)}-${Math.round(serverMaxSec)} сек)`);
           } else {
-            // Дефолтная задержка 30 секунд
-            delayMs = 30000;
+            // Дефолтная задержка с рандомизацией (30-60 секунд)
+            delayMs = getRandomDelay(30, 60);
+            console.log(`⏱️ Случайная задержка: ${Math.round(delayMs / 1000)} сек (дефолтный диапазон: 30-60 сек)`);
           }
           
           await sleep(delayMs);

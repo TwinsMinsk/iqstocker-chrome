@@ -47,6 +47,9 @@ let settingsState: SettingsState = {
   discordStatus: null
 };
 
+// Флаг для отслеживания изменений промптов
+let promptsChangeTimeout: number | null = null;
+
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', async () => {
   await loadState();
@@ -201,10 +204,97 @@ function setupEventListeners(): void {
     manualSearchButton.addEventListener('click', handleManualSearch);
   }
   
-  const resetSettingsButton = document.getElementById('reset-settings-btn') as HTMLButtonElement;
-  if (resetSettingsButton) {
-    resetSettingsButton.addEventListener('click', handleResetSettings);
+  const refreshButton = document.getElementById('refresh-btn') as HTMLButtonElement;
+  if (refreshButton) {
+    refreshButton.addEventListener('click', handleRefresh);
   }
+  
+  // Обработчик изменения промптов для валидации кредитов
+  if (promptsTextarea) {
+    promptsTextarea.addEventListener('input', handlePromptsChange);
+  }
+}
+
+/**
+ * Обработчик изменения промптов - валидация кредитов
+ */
+function handlePromptsChange(e: Event): void {
+  const textarea = e.target as HTMLTextAreaElement;
+  const text = textarea.value;
+  state.prompts = text.split('\n');
+  
+  // Отложенная валидация (debounce 500мс)
+  if (promptsChangeTimeout) {
+    clearTimeout(promptsChangeTimeout);
+  }
+  
+  promptsChangeTimeout = window.setTimeout(() => {
+    validateCreditsForPrompts();
+    render();
+  }, 500);
+}
+
+/**
+ * Валидация кредитов для текущих промптов
+ */
+function validateCreditsForPrompts(): void {
+  if (state.balance === null || state.prompts.length === 0) {
+    // Если нет баланса или промптов, очищаем ошибку
+    if (state.error && state.error.includes('credits')) {
+      state.error = null;
+    }
+    return;
+  }
+  
+  // Подсчитать валидные промпты
+  const fullText = state.prompts.join('\n');
+  const parsedPrompts = parsePromptsFromText(fullText);
+  const validPromptsCount = cleanPrompts(parsedPrompts).length;
+  
+  // Проверить достаточно ли кредитов
+  if (validPromptsCount > state.balance) {
+    state.error = `❌ Need ${validPromptsCount} credits, have ${state.balance}`;
+  } else {
+    // Если кредитов достаточно, убираем ошибку о кредитах
+    if (state.error && state.error.includes('credits')) {
+      state.error = null;
+    }
+  }
+}
+
+/**
+ * Обработчик кнопки "Обновить" - обновляет UI, очищает ошибки, но сохраняет ключ и промпты
+ */
+async function handleRefresh(): Promise<void> {
+  // Сохранить ключ и промпты
+  const savedKey = state.licenseKey;
+  const savedPrompts = state.prompts;
+  const savedDelayMin = state.delayMin;
+  const savedDelayMax = state.delayMax;
+  
+  // Сбросить ошибки и статусы
+  state.error = null;
+  state.keyValidationStatus = null;
+  state.keyValidationMessage = null;
+  state.status = 'Ready';
+  state.currentPrompt = 0;
+  state.totalPrompts = 0;
+  settingsState.discordStatus = null;
+  
+  // Восстановить сохраненные данные
+  state.licenseKey = savedKey;
+  state.prompts = savedPrompts;
+  state.delayMin = savedDelayMin;
+  state.delayMax = savedDelayMax;
+  
+  // Если есть ключ, обновить баланс
+  if (state.licenseKey) {
+    await updateBalance();
+    // Валидировать кредиты после обновления баланса
+    validateCreditsForPrompts();
+  }
+  
+  render();
 }
 
 /**
@@ -343,18 +433,6 @@ function setupStatusListener(): void {
       }
     }
   }, 30000); // 30 секунд таймаут
-}
-
-/**
- * Обработчик сброса настроек
- */
-async function handleResetSettings(): Promise<void> {
-  if (confirm('Сбросить все настройки?')) {
-    await chrome.storage.local.remove(['last_successful_selector']);
-    saveState();
-    render();
-    showNotification('Настройки сброшены');
-  }
 }
 
 /**
@@ -647,7 +725,6 @@ function render(): void {
             type="number" 
             id="delay-min" 
             min="1" 
-            max="600" 
             value="${state.delayMin}"
             ${state.isRunning ? 'disabled' : ''}
             class="delay-input"
@@ -661,7 +738,6 @@ function render(): void {
             type="number" 
             id="delay-max" 
             min="1" 
-            max="600" 
             value="${state.delayMax}"
             ${state.isRunning ? 'disabled' : ''}
             class="delay-input"
@@ -686,20 +762,19 @@ function render(): void {
     
     ${state.error ? `
       <div class="error-message">
-        ❌ ${state.error}
+        ${state.error}
       </div>
     ` : ''}
     
-    <div class="section settings-section">
-      <h3>⚙️ Настройки</h3>
-      
+    <div class="section">
       <button 
-        id="reset-settings-btn" 
+        id="refresh-btn" 
         class="btn-secondary"
-        style="margin-top: 8px; width: 100%;"
+        style="width: 100%;"
         ${state.isRunning ? 'disabled' : ''}
+        title="Обновить окно (ключ и промпты сохранятся)"
       >
-        Сбросить настройки
+        🔄 Обновить
       </button>
     </div>
     

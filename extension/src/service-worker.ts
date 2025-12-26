@@ -527,13 +527,41 @@ if (typeof chrome === 'undefined' || !chrome.runtime) {
 
       // Планируем следующий шаг
       if (nextState.current_index < nextState.prompts.length) {
-        // Учитываем минимальный интервал с сервера (защита от rate-limit/банов)
-        const randomDelayMs = getRandomDelayMs(nextState.delay_min_sec, nextState.delay_max_sec);
+        // Правильно объединяем пользовательский и серверный диапазоны
+        // чтобы сохранить рандомизацию и учесть серверные ограничения
+        const userMinSec = nextState.delay_min_sec;
+        const userMaxSec = nextState.delay_max_sec;
         const serverMinMs = nextState.session_config?.min_interval_ms;
-        const delayMs =
-          typeof serverMinMs === 'number' && Number.isFinite(serverMinMs)
-            ? Math.max(randomDelayMs, serverMinMs)
-            : randomDelayMs;
+        const serverMaxMs = nextState.session_config?.max_interval_ms;
+        
+        let finalMinSec: number;
+        let finalMaxSec: number;
+        
+        if (typeof serverMinMs === 'number' && Number.isFinite(serverMinMs)) {
+          const serverMinSec = serverMinMs / 1000;
+          const serverMaxSec = typeof serverMaxMs === 'number' && Number.isFinite(serverMaxMs)
+            ? serverMaxMs / 1000
+            : Infinity;
+          
+          // Объединяем диапазоны: берем максимум из минимумов и минимум из максимумов
+          finalMinSec = Math.max(userMinSec, serverMinSec);
+          finalMaxSec = Math.min(userMaxSec, serverMaxSec);
+          
+          // Если пользовательский диапазон полностью меньше серверного минимума,
+          // используем серверный диапазон (если есть максимум) или только минимум
+          if (finalMinSec > finalMaxSec) {
+            finalMinSec = serverMinSec;
+            finalMaxSec = Number.isFinite(serverMaxSec) ? serverMaxSec : serverMinSec * 2;
+          }
+        } else {
+          // Серверных ограничений нет - используем пользовательский диапазон
+          finalMinSec = userMinSec;
+          finalMaxSec = userMaxSec;
+        }
+        
+        // Генерируем случайное число в итоговом диапазоне
+        const delayMs = getRandomDelayMs(finalMinSec, finalMaxSec);
+        console.log(`⏱️ Случайная задержка: ${Math.round(delayMs / 1000)} сек (диапазон: ${Math.round(finalMinSec)}-${Math.round(finalMaxSec)} сек)`);
         await scheduleNextRun(delayMs);
       } else {
         // Всё отправили — добьём на следующем тике, чтобы централизованно финализировать
@@ -697,7 +725,26 @@ if (typeof chrome === 'undefined' || !chrome.runtime) {
             throw new Error('Список промптов пуст');
           }
 
-          // Остановить предыдущую очередь
+          // Проверить, находится ли очередь в режиме паузы
+          const currentState = await getState();
+          const isPaused = currentState.status === 'paused';
+          
+          // Если пауза - возобновляем с текущего места
+          if (isPaused && currentState.prompts.length > 0 && currentState.current_index < currentState.prompts.length) {
+            console.log(`🔄 Возобновление с промпта ${currentState.current_index + 1}/${currentState.prompts.length}`);
+            await setState({ 
+              status: 'sending',
+              last_error: undefined,
+              is_sending: false,
+              sending_started_at: undefined
+            });
+            // Запуск сразу
+            await scheduleNextRun(10);
+            sendResponse({ ok: true });
+            return;
+          }
+
+          // Остановить предыдущую очередь (если не пауза)
           await clearNextAlarm();
 
           const startedAt = Date.now();
