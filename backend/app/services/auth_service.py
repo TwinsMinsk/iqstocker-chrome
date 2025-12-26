@@ -100,7 +100,7 @@ class AuthService:
             db.add(user)
             db.flush()  # Получаем user.id без commit
             
-            # Создаём бесплатную подписку с 50 кредитами
+            # Создаём бесплатную подписку с начальными кредитами (из FREE_CREDITS_AMOUNT)
             subscription = AuthService.create_free_subscription(db, user.id)
             if not subscription:
                 db.rollback()
@@ -168,7 +168,10 @@ class AuthService:
     @staticmethod
     def create_free_subscription(db: Session, user_id: str) -> Optional[Subscription]:
         """
-        Создать бесплатную подписку с 50 кредитами
+        Создать бесплатную подписку с начальными кредитами
+        
+        Количество кредитов берется из переменной окружения FREE_CREDITS_AMOUNT
+        (по умолчанию 1000, можно изменить в Railway)
         
         Args:
             db: Database session
@@ -177,12 +180,16 @@ class AuthService:
         Returns:
             Subscription или None
         """
+        from app.core.config import settings
+        
+        free_credits = settings.FREE_CREDITS_AMOUNT
+        
         try:
             # Проверяем, нет ли уже подписки у пользователя
             existing = db.query(Subscription).filter(Subscription.user_id == user_id).first()
             if existing:
                 logger.info(f"Subscription already exists for user {user_id}, updating balance")
-                existing.credits_balance = 50
+                existing.credits_balance = free_credits
                 existing.status = "active"
                 existing.plan_id = "free"
                 db.flush()
@@ -192,7 +199,7 @@ class AuthService:
                 user_id=user_id,
                 plan_id="free",
                 status="active",
-                credits_balance=50,  # 50 бесплатных кредитов
+                credits_balance=free_credits,  # Количество из переменной окружения
                 monthly_limit=None,  # Без лимита для free плана
                 used_this_month=0,
                 subscription_starts_at=datetime.utcnow(),
@@ -201,7 +208,7 @@ class AuthService:
             
             db.add(subscription)
             db.flush()
-            logger.info(f"Created free subscription for user {user_id} with 50 credits")
+            logger.info(f"Created free subscription for user {user_id} with {free_credits} credits")
             return subscription
             
         except Exception as e:

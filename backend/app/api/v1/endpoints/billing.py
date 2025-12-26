@@ -70,7 +70,7 @@ async def get_my_subscription(
 ):
     """
     Получить текущую подписку пользователя
-    Если подписки нет, создается бесплатная подписка с 50 кредитами
+    Если подписки нет, создается бесплатная подписка с начальными кредитами (из FREE_CREDITS_AMOUNT)
     """
     subscription = billing_service.get_user_subscription(db, str(user.id))
     
