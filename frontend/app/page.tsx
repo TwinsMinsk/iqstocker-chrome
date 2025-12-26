@@ -129,7 +129,7 @@ export default function HomePage() {
           </div>
 
           {/* Dashboard Preview */}
-          <div className="mt-20 p-2 bg-white/5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-sm max-w-4xl mx-auto">
+          <div id="features" className="mt-20 p-2 bg-white/5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-sm max-w-4xl mx-auto">
             <div className="aspect-[16/9] bg-[#0f0f0f] rounded-xl flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 opacity-50" />
               
@@ -153,7 +153,7 @@ export default function HomePage() {
       </section>
 
       {/* FEATURES GRID */}
-      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-8 rounded-3xl bg-[#0f0f0f] border border-white/5 hover:border-indigo-500/30 transition-colors group">
