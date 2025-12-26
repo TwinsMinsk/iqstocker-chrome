@@ -30,24 +30,32 @@ app = FastAPI(
 )
 
 # Middleware
+origins = settings.CORS_ORIGINS
+# Если в списке есть "*", то allow_credentials должно быть False
+allow_all_origins = "*" in origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=not allow_all_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# TrustedHostMiddleware - отключаем в тестовом окружении
-# В тестах TestClient использует "testserver" как host
+# TrustedHostMiddleware - на Railway может вызывать проблемы с 400 Bad Request
+# если HOST заголовок не совпадает. Разрешаем все хосты, если в настройках "*"
+allowed_hosts = settings.ALLOWED_HOSTS
+if "*" in allowed_hosts:
+    allowed_hosts = ["*"]
+
 if settings.ENVIRONMENT != "test":
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=settings.ALLOWED_HOSTS
+        allowed_hosts=allowed_hosts
     )
 else:
     # В тестовом окружении добавляем "testserver" в allowed_hosts
-    test_allowed_hosts = list(settings.ALLOWED_HOSTS) + ["testserver"]
+    test_allowed_hosts = list(allowed_hosts) + ["testserver"]
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=test_allowed_hosts
@@ -102,7 +110,7 @@ async def health_check():
     Проверяет доступность критичных сервисов
     """
     from app.db.session import get_db
-    from app.integrations.redis_client import get_redis
+    from app.integrations.redis_client import get_redis_client as get_redis
     
     health_status = {
         "status": "healthy",

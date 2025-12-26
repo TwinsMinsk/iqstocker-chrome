@@ -75,12 +75,12 @@ class Settings(BaseSettings):
     # Храним как строку, чтобы избежать автоматического JSON парсинга Pydantic
     # Используем property для получения списка
     cors_origins_str: str = Field(
-        default='["http://localhost:3000", "http://localhost:3001"]',
+        default='["*"]',
         alias="CORS_ORIGINS",
         description="CORS allowed origins (JSON array, comma-separated string, or single URL)"
     )
     allowed_hosts_str: str = Field(
-        default='["localhost", "127.0.0.1"]',
+        default='["*"]',
         alias="ALLOWED_HOSTS",
         description="Allowed hosts (JSON array, comma-separated string, or single host)"
     )
@@ -90,70 +90,70 @@ class Settings(BaseSettings):
     def parse_cors_origins_str(cls, v):
         """Парсит CORS_ORIGINS как строку"""
         if v is None:
-            return '["http://localhost:3000", "http://localhost:3001"]'
+            return '["*"]'
         
         # Если это уже список (из дефолтного значения), конвертируем в JSON строку
         if isinstance(v, list):
             return json.dumps(v)
         
         # Если это строка, возвращаем как есть
-        return str(v) if v else '["http://localhost:3000", "http://localhost:3001"]'
+        return str(v) if v else '["*"]'
     
     @field_validator('allowed_hosts_str', mode='before')
     @classmethod
     def parse_allowed_hosts_str(cls, v):
         """Парсит ALLOWED_HOSTS как строку"""
         if v is None:
-            return '["localhost", "127.0.0.1"]'
+            return '["*"]'
         
         # Если это уже список (из дефолтного значения), конвертируем в JSON строку
         if isinstance(v, list):
             return json.dumps(v)
         
         # Если это строка, возвращаем как есть
-        return str(v) if v else '["localhost", "127.0.0.1"]'
+        return str(v) if v else '["*"]'
     
     @property
     def CORS_ORIGINS(self) -> List[str]:
         """Возвращает CORS_ORIGINS как список"""
         value = self.cors_origins_str.strip()
         if not value:
-            return ["http://localhost:3000", "http://localhost:3001"]
+            return ["*"]
         
         # Пробуем распарсить как JSON
         try:
             parsed = json.loads(value)
             if isinstance(parsed, list):
                 return [str(item) for item in parsed if item]
-            return [str(parsed)] if parsed else ["http://localhost:3000", "http://localhost:3001"]
+            return [str(parsed)] if parsed else ["*"]
         except (json.JSONDecodeError, ValueError, TypeError):
             # Если не JSON, пробуем разделить по запятой
             if ',' in value:
                 origins = [origin.strip() for origin in value.split(',') if origin.strip()]
-                return origins if origins else ["http://localhost:3000", "http://localhost:3001"]
+                return origins if origins else ["*"]
             # Если один элемент, возвращаем как список
-            return [value] if value else ["http://localhost:3000", "http://localhost:3001"]
+            return [value] if value else ["*"]
     
     @property
     def ALLOWED_HOSTS(self) -> List[str]:
         """Возвращает ALLOWED_HOSTS как список"""
         value = self.allowed_hosts_str.strip()
         if not value:
-            return ["localhost", "127.0.0.1"]
+            return ["*"]
         
         # Пробуем распарсить как JSON
         try:
             parsed = json.loads(value)
             if isinstance(parsed, list):
                 return [str(item) for item in parsed if item]
-            return [str(parsed)] if parsed else ["localhost", "127.0.0.1"]
+            return [str(parsed)] if parsed else ["*"]
         except (json.JSONDecodeError, ValueError, TypeError):
             # Если не JSON, пробуем разделить по запятой
             if ',' in value:
                 hosts = [host.strip() for host in value.split(',') if host.strip()]
-                return hosts if hosts else ["localhost", "127.0.0.1"]
+                return hosts if hosts else ["*"]
             # Если один элемент, возвращаем как список
-            return [value] if value else ["localhost", "127.0.0.1"]
+            return [value] if value else ["*"]
     
     # API
     API_V1_PREFIX: str = "/api/v1"
