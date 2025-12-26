@@ -130,25 +130,23 @@ export default function HomePage() {
 
           {/* Dashboard Preview */}
           <div className="mt-20 p-2 bg-white/5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-sm max-w-4xl mx-auto">
-            <div className="aspect-[16/9] bg-[#0f0f0f] rounded-xl flex items-center justify-center border border-white/5 relative overflow-hidden group">
+            <div className="aspect-[16/9] bg-[#0f0f0f] rounded-xl flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 opacity-50" />
               
-              <div className="grid grid-cols-12 gap-4 w-3/4 opacity-80 group-hover:opacity-100 transition-opacity duration-500">
-                <div className="col-span-3 space-y-3">
-                  <div className="h-8 w-full bg-white/10 rounded-lg" />
-                  <div className="h-4 w-2/3 bg-white/5 rounded-md" />
-                  <div className="h-4 w-3/4 bg-white/5 rounded-md" />
-                  <div className="h-4 w-1/2 bg-white/5 rounded-md" />
+              <div className="z-10 flex flex-col items-center gap-6 p-8 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-md shadow-2xl group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
                 </div>
-                <div className="col-span-9 space-y-4">
-                  <div className="flex gap-4">
-                    <div className="h-24 w-1/3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl" />
-                    <div className="h-24 w-1/3 bg-white/5 border border-white/10 rounded-xl" />
-                    <div className="h-24 w-1/3 bg-white/5 border border-white/10 rounded-xl" />
-                  </div>
-                  <div className="h-48 w-full bg-white/5 border border-white/10 rounded-xl" />
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold text-white tracking-tight">Смотреть демо видео</h3>
+                  <p className="text-sm text-gray-400">Узнайте как это работает за 60 секунд</p>
                 </div>
               </div>
+
+              {/* Decorative elements */}
+              <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none" />
             </div>
           </div>
         </div>
