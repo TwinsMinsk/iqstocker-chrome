@@ -650,6 +650,11 @@ function render(): void {
     <div class="section settings-section">
       <h3>⚙️ Настройки</h3>
       
+      <div class="api-info" style="font-size: 11px; color: #888; margin: 8px 0; padding: 8px; background: #f5f5f5; border-radius: 4px;">
+        <div style="margin-bottom: 4px;"><strong>API:</strong> Production (Railway)</div>
+        <div style="font-size: 10px; word-break: break-all;">backend-production-40040.up.railway.app</div>
+      </div>
+      
       <button 
         id="reset-settings-btn" 
         class="btn-secondary"

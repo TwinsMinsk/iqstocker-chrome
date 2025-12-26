@@ -1,8 +1,8 @@
 ﻿{
     "manifest_version":  3,
     "name":  "IQStocker Chrome Auto",
-    "version":  "1.0.2",
-    "description":  "РђРІС‚РѕРјР°С‚РёР·РёСЂСѓР№ РѕС‚РїСЂР°РІРєСѓ РїСЂРѕРјРїС‚РѕРІ РІ Midjourney С‡РµСЂРµР· Discord",
+    "version":  "1.0.3",
+    "description":  "Автоматизируй отправку промптов в Midjourney через Discord",
     "permissions":  [
                         "storage",
                         "tabs",
@@ -11,7 +11,8 @@
                     ],
     "host_permissions":  [
                              "https://discord.com/*",
-                             "http://localhost:8000/api/v1/*"
+                             "https://backend-production-40040.up.railway.app/*",
+                             "http://localhost:8000/*"
                          ],
     "action":  {
                    "default_popup":  "popup.html",

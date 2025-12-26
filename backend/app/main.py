@@ -127,8 +127,9 @@ async def health_check():
     
     # Проверка database
     try:
+        from sqlalchemy import text
         db = next(get_db())
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         health_status["services"]["database"] = "ok"
     except Exception as e:
         health_status["status"] = "degraded"

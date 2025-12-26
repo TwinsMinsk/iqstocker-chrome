@@ -4,6 +4,8 @@
  * Документация: См. Docs/SECURITY_PROTECTION_GUIDE.md
  */
 
+import { getDefaultApiUrl, CACHE_TTL_MS } from '../constants/config';
+
 export interface ExtensionConfig {
   min_interval_ms: number;
   max_interval_ms: number;
@@ -42,30 +44,42 @@ export interface CachedPermission extends BatchValidateResponse {
   ttl_ms: number;
 }
 
-// API URL - можно переопределить через chrome.storage или использовать по умолчанию
-const DEFAULT_API_BASE_URL = 'http://localhost:8000/api/v1';
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-// Получить API URL из storage или использовать по умолчанию
+/**
+ * Получить API URL из storage или использовать production по умолчанию
+ * 
+ * Приоритет:
+ * 1. Пользовательская настройка из chrome.storage (если задана)
+ * 2. Production URL из config.ts
+ */
 async function getApiBaseUrl(): Promise<string> {
   const result = await chrome.storage.local.get('api_base_url');
   const candidate: string | undefined = result.api_base_url;
 
-  // Безопасные дефолты:
+  // Если пользователь не задал кастомный URL, используем production
+  if (!candidate || typeof candidate !== 'string') {
+    return getDefaultApiUrl();
+  }
+
+  // Валидация пользовательского URL:
   // - Не даём подложить "javascript:" и т.п.
   // - Требуем http/https
-  // - Требуем, чтобы путь начинался с /api/v1 (иначе легко ошибиться и сломать запросы)
-  if (!candidate || typeof candidate !== 'string') return DEFAULT_API_BASE_URL;
-
+  // - Требуем, чтобы путь начинался с /api/v1
   try {
     const url = new URL(candidate);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return DEFAULT_API_BASE_URL;
-    if (!url.pathname.startsWith('/api/v1')) return DEFAULT_API_BASE_URL;
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      console.warn('Invalid protocol in custom API URL, using default');
+      return getDefaultApiUrl();
+    }
+    if (!url.pathname.startsWith('/api/v1')) {
+      console.warn('Invalid path in custom API URL, using default');
+      return getDefaultApiUrl();
+    }
 
     // Нормализуем: убираем trailing slash
     return candidate.replace(/\/+$/, '');
   } catch {
-    return DEFAULT_API_BASE_URL;
+    console.warn('Failed to parse custom API URL, using default');
+    return getDefaultApiUrl();
   }
 }
 
