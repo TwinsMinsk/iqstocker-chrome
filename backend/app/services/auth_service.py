@@ -34,7 +34,7 @@ class AuthService:
         email: str,
         password: str,
         oauth_google_id: Optional[str] = None,
-        email_verified: bool = False
+        email_verified: bool = True  # По умолчанию email считается верифицированным (упрощенная регистрация)
     ) -> Tuple[Optional[User], Optional[str]]:
         """
         Создать нового пользователя
@@ -44,7 +44,7 @@ class AuthService:
             email: Email пользователя
             password: Пароль (будет захеширован)
             oauth_google_id: Google OAuth ID (опционально)
-            email_verified: Email уже верифицирован (для OAuth)
+            email_verified: Email уже верифицирован (по умолчанию True для упрощенной регистрации)
         
         Returns:
             Tuple[User, error_message]
@@ -65,10 +65,9 @@ class AuthService:
                 if existing_oauth_user:
                     return None, "User with this Google account already exists"
             
-            # Генерируем токен верификации email (если не OAuth)
+            # Упрощенная регистрация: не генерируем токен верификации
+            # Email считается верифицированным сразу
             verification_token = None
-            if not email_verified:
-                verification_token = generate_verification_token()
             
             # Проверка длины пароля в байтах (bcrypt ограничение: 72 байта)
             if password:
@@ -86,12 +85,14 @@ class AuthService:
                     return None, "Пароль не может быть длиннее 72 байт. Используйте более короткий пароль"
                 return None, f"Ошибка обработки пароля: {error_msg}"
             
+            # Упрощенная регистрация: email сразу верифицирован
             user = User(
                 email=email,
                 password_hash=password_hash,
                 oauth_google_id=oauth_google_id,
-                email_verified=email_verified,
-                email_verification_token=verification_token,
+                email_verified=True,  # Всегда True для упрощенной регистрации
+                email_verification_token=None,  # Не нужен токен
+                email_verified_at=datetime.utcnow(),  # Сразу устанавливаем время верификации
                 is_active=True,
                 is_admin=False,
             )
@@ -114,15 +115,13 @@ class AuthService:
             db.commit()
             db.refresh(user)
             
-            # Отправляем письмо верификации (если нужно)
-            if verification_token and email_service:
-                try:
-                    base_url = settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "http://localhost:3000"
-                    email_service.send_verification_email(user.email, verification_token, base_url)
-                    email_service.send_welcome_email(user.email)
-                except Exception as e:
-                    logger.warning(f"Failed to send verification email: {e}")
-                    # Не прерываем регистрацию из-за ошибки email
+            # Упрощенная регистрация: не отправляем письма верификации
+            # Можно оставить только welcome email (опционально)
+            # if email_service:
+            #     try:
+            #         email_service.send_welcome_email(user.email)
+            #     except Exception as e:
+            #         logger.warning(f"Failed to send welcome email: {e}")
             
             logger.info(f"User created successfully: {user.email}")
             return user, None
