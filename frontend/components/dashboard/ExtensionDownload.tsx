@@ -151,27 +151,4 @@ export function ExtensionDownload() {
     </div>
   );
 }
-      
-      <div className="relative z-10 hidden lg:block">
-         <div className="w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] absolute inset-0 animate-pulse"></div>
-         <div className="relative bg-[#0a0a0f] border border-white/10 rounded-[40px] p-10 w-80 transform rotate-2 shadow-2xl shadow-indigo-500/10">
-            <div className="flex gap-2 mb-8">
-               <div className="w-2.5 h-2.5 rounded-full bg-red-500/20"></div>
-               <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20"></div>
-               <div className="w-2.5 h-2.5 rounded-full bg-green-500/20"></div>
-            </div>
-            <div className="space-y-6">
-               <div className="h-2 w-full bg-white/5 rounded-full"></div>
-               <div className="h-2 w-4/5 bg-white/5 rounded-full"></div>
-               <div className="h-2 w-2/3 bg-white/5 rounded-full"></div>
-               <div className="h-12 w-full bg-indigo-500/10 rounded-2xl mt-10 flex items-center justify-center">
-                  <div className="w-20 h-2 bg-indigo-500/30 rounded-full"></div>
-               </div>
-            </div>
-         </div>
-      </div>
-    </div>
-  );
-}
-
 
