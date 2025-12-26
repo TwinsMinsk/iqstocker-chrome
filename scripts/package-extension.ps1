@@ -24,10 +24,23 @@ param(
 
   # Where to publish artifacts (defaults to frontend public folder)
   [Parameter(Mandatory = $false)]
-  [string]$OutDir = (Join-Path $PSScriptRoot "..\frontend\public\downloads\extension")
+  [string]$OutDir
 )
 
 $ErrorActionPreference = "Stop"
+
+# Определяем путь к скрипту, если $PSScriptRoot пустой
+if (-not $PSScriptRoot) {
+    $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+    if (-not $PSScriptRoot) {
+        $PSScriptRoot = Split-Path -Parent (Get-Location).Path
+    }
+}
+
+# Устанавливаем OutDir по умолчанию, если не указан
+if (-not $OutDir) {
+    $OutDir = (Join-Path $PSScriptRoot "..\frontend\public\downloads\extension")
+}
 
 function Assert-FileExists([string]$PathToFile, [string]$Hint) {
   if (-not (Test-Path -LiteralPath $PathToFile)) {

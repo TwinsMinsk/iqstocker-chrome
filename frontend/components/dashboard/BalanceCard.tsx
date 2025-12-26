@@ -35,9 +35,10 @@ export function BalanceCard() {
          <span className="text-sm text-white/30 font-bold uppercase tracking-widest">Статус: Готов</span>
          <Link 
             href="/dashboard/billing" 
-            className="text-sm font-black text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-widest"
+            className="relative px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-xl border-2 border-indigo-400/50 hover:border-indigo-300 transition-all duration-200 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-105 active:scale-95 flex items-center gap-2 z-10"
          >
-            Пополнить →
+            <span>Пополнить</span>
+            <span className="text-lg">→</span>
          </Link>
       </div>
     </div>

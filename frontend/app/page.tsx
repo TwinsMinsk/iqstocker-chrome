@@ -105,7 +105,7 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8 leading-[1.1]">
             Автоматизируйте свой <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
-              Midjourney процесс
+              Midjourney
             </span>
           </h1>
 
