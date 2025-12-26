@@ -107,9 +107,14 @@ export function LicenseKeyCard() {
           {generateKeyMutation.isPending ? '⏳ Генерация...' : hasKey ? '🔄 Обновить ключ' : '✨ Создать ключ'}
         </button>
         <div className="w-1 h-1 rounded-full bg-indigo-400/50"></div>
-        <Link href="/docs/extension" className="text-xs font-bold text-indigo-300 hover:text-indigo-100 transition-colors uppercase tracking-[0.2em] px-3 py-2 rounded-lg hover:bg-indigo-900/30">
+        <a 
+          href="https://github.com/your-repo/docs" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-xs font-bold text-indigo-300 hover:text-indigo-100 transition-colors uppercase tracking-[0.2em] px-3 py-2 rounded-lg hover:bg-indigo-900/30"
+        >
           📖 Инструкция
-        </Link>
+        </a>
       </div>
     </div>
   );

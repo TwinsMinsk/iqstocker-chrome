@@ -27,29 +27,56 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
+    (set, get) => {
+      // Восстанавливаем токены из localStorage при инициализации
+      const initializeAuth = () => {
+        if (typeof window !== 'undefined') {
+          const accessToken = localStorage.getItem('access_token');
+          const refreshToken = localStorage.getItem('refresh_token');
+          if (accessToken && refreshToken) {
+            // Восстанавливаем токены в apiClient
+            apiClient.setToken(accessToken);
+            apiClient.setRefreshToken(refreshToken);
+            // Устанавливаем isAuthenticated в true, если есть токены
+            return {
+              accessToken,
+              refreshToken,
+              isAuthenticated: true,
+            };
+          }
+        }
+        return {
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        };
+      };
 
-      setTokens: (tokens: TokenResponse) => {
-        apiClient.setToken(tokens.access_token);
-        apiClient.setRefreshToken(tokens.refresh_token);
-        set({
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          isAuthenticated: true,
-        });
-      },
+      const initialState = initializeAuth();
 
-      setUser: (user: UserProfileResponse) => {
-        set({ user });
-      },
+      return {
+        user: null,
+        accessToken: initialState.accessToken,
+        refreshToken: initialState.refreshToken,
+        isAuthenticated: initialState.isAuthenticated,
+        isLoading: false,
+        error: null,
 
-      login: async (email: string, password: string) => {
+        setTokens: (tokens: TokenResponse) => {
+          apiClient.setToken(tokens.access_token);
+          apiClient.setRefreshToken(tokens.refresh_token);
+          set({
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            isAuthenticated: true,
+          });
+        },
+
+        setUser: (user: UserProfileResponse) => {
+          set({ user });
+        },
+
+        login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
           const tokens = await authAPI.login({ email, password });
@@ -88,9 +115,9 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           set({ isLoading: false });
         }
-      },
+        },
 
-      register: async (email: string, password: string) => {
+        register: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
           const tokens = await authAPI.register({ email, password });
@@ -131,9 +158,9 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           set({ isLoading: false });
         }
-      },
+        },
 
-      logout: async () => {
+        logout: async () => {
         try {
           await authAPI.logout();
         } catch (error) {
@@ -150,21 +177,36 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
           });
         }
-      },
+        },
 
-      fetchUser: async () => {
+        fetchUser: async () => {
         try {
           const user = await usersAPI.getProfile();
           set({ user, isAuthenticated: true });
         } catch (error) {
-          set({ isAuthenticated: false, user: null });
+          // Если ошибка 401, токен невалиден - очищаем состояние
+          if ((error as any)?.response?.status === 401) {
+            set({ 
+              isAuthenticated: false, 
+              user: null,
+              accessToken: null,
+              refreshToken: null 
+            });
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
+            }
+          } else {
+            set({ isAuthenticated: false, user: null });
+          }
         }
-      },
+        },
 
-      clearError: () => {
-        set({ error: null });
-      },
-    }),
+          clearError: () => {
+          set({ error: null });
+        },
+      };
+    },
     {
       name: 'auth-storage',
       partialize: (state) => ({

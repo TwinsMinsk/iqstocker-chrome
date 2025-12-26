@@ -1,36 +1,39 @@
-{
-  "manifest_version": 3,
-  "name": "IQStocker Chrome Auto",
-  "version": "1.0.1",
-  "description": "Автоматизируй отправку промптов в Midjourney через Discord",
-  "permissions": [
-    "storage",
-    "tabs",
-    "scripting",
-    "alarms"
-  ],
-  "host_permissions": [
-    "https://discord.com/*",
-    "http://localhost:8000/api/v1/*"
-  ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "IQStocker Chrome Auto"
-  },
-  "background": {
-    "service_worker": "service-worker.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://discord.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+﻿{
+    "manifest_version":  3,
+    "name":  "IQStocker Chrome Auto",
+    "version":  "1.0.2",
+    "description":  "РђРІС‚РѕРјР°С‚РёР·РёСЂСѓР№ РѕС‚РїСЂР°РІРєСѓ РїСЂРѕРјРїС‚РѕРІ РІ Midjourney С‡РµСЂРµР· Discord",
+    "permissions":  [
+                        "storage",
+                        "tabs",
+                        "scripting",
+                        "alarms"
+                    ],
+    "host_permissions":  [
+                             "https://discord.com/*",
+                             "http://localhost:8000/api/v1/*"
+                         ],
+    "action":  {
+                   "default_popup":  "popup.html",
+                   "default_title":  "IQStocker Chrome Auto"
+               },
+    "background":  {
+                       "service_worker":  "service-worker.js"
+                   },
+    "content_scripts":  [
+                            {
+                                "matches":  [
+                                                "https://discord.com/*"
+                                            ],
+                                "js":  [
+                                           "content.js"
+                                       ],
+                                "run_at":  "document_idle"
+                            }
+                        ],
+    "icons":  {
+                  "16":  "icons/icon16.png",
+                  "48":  "icons/icon48.png",
+                  "128":  "icons/icon128.png"
+              }
 }
-

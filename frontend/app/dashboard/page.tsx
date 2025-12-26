@@ -8,16 +8,27 @@ import { LicenseKeyCard } from '@/components/dashboard/LicenseKeyCard';
 import { ExtensionDownload } from '@/components/dashboard/ExtensionDownload';
 
 export default function DashboardPage() {
-  const { isAuthenticated, fetchUser, user } = useAuthStore();
+  const { isAuthenticated, fetchUser, user, accessToken } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Если есть токен, но пользователь не загружен, загружаем его
+    if (accessToken && !user) {
+      fetchUser();
+      return;
+    }
+    
+    // Если нет токена и не аутентифицирован, редиректим на логин
+    if (!accessToken && !isAuthenticated) {
       router.push('/login');
       return;
     }
-    fetchUser();
-  }, [isAuthenticated, router, fetchUser]);
+    
+    // Если аутентифицирован, но пользователь не загружен, загружаем
+    if (isAuthenticated && !user) {
+      fetchUser();
+    }
+  }, [isAuthenticated, accessToken, user, router, fetchUser]);
 
   if (!isAuthenticated) {
     return null;

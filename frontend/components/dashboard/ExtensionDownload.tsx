@@ -1,15 +1,39 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export function ExtensionDownload() {
-  const handleDownload = (type: 'zip' | 'exe') => {
-    // TODO: Реализовать скачивание расширения
-    const url =
-      type === 'zip'
-        ? '/api/extensions/download/zip'
-        : '/api/extensions/download/exe';
-    window.open(url, '_blank');
+  /**
+   * UI скачивания расширения:
+   * - скачиваем ТОЛЬКО ZIP (EXE не поддерживаем и не показываем)
+   * - показываем текущую опубликованную версию (берём с /api/extensions/latest)
+   *
+   * Важно: версия тут НЕ обязана совпадать с версией самого фронтенда.
+   */
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch('/api/extensions/latest', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = (await res.json()) as { version?: string };
+        if (!cancelled) setLatestVersion(data?.version ?? null);
+      } catch {
+        // Молча игнорируем: UX не должен ломаться из-за метаданных
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleDownloadZip = () => {
+    // Открываем в новой вкладке, чтобы не ломать SPA-навигацию и не блокировать UI.
+    window.open('/api/extensions/download/zip', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -25,20 +49,21 @@ export function ExtensionDownload() {
         <p className="text-lg text-white/40 font-light leading-relaxed mb-10 max-w-md">
           Скачайте расширение IQStocker Auto. Автоматизируйте Discord без лимитов напрямую из браузера.
         </p>
+
+        <div className="text-xs font-bold tracking-[0.2em] uppercase text-white/30 mb-8">
+          Актуальная версия:{' '}
+          <span className="text-white/60">
+            {latestVersion ? `v${latestVersion}` : '—'}
+          </span>
+        </div>
         
         <div className="flex flex-wrap gap-6">
            <button 
-             onClick={() => handleDownload('zip')}
+             onClick={handleDownloadZip}
              className="group px-10 py-5 bg-white text-black rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-50 transition-all flex items-center gap-4 shadow-2xl shadow-white/5"
            >
               <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
               Скачать ZIP
-           </button>
-           <button 
-             onClick={() => handleDownload('exe')}
-             className="px-10 py-5 bg-white/5 border border-white/10 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
-           >
-              Скачать EXE
            </button>
         </div>
       </div>
