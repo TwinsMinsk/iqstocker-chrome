@@ -8,7 +8,7 @@ import { Footer } from '@/components/common/Footer';
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
 
 export const metadata: Metadata = {
-  title: 'Midjourney Auto - Автоматизация промптов',
+  title: 'IQСтокер Генеринг - Автоматизация промптов',
   description: 'Сервис для автоматической отправки промптов в Midjourney',
 };
 

@@ -61,30 +61,38 @@ export default function HomePage() {
 
   const faqs = [
     {
+      q: "Есть ли пробный период?",
+      a: "Да, после регистрации вам автоматически начислятся 50 бесплатных кредитов. Вы можете использовать их в любое время, чтобы проверить работу сервиса."
+    },
+    {
       q: "Как начать пользоваться?",
-      a: "Просто зарегистрируйтесь, скачайте наше Chrome расширение и авторизуйтесь. Вы сразу получите 50 бесплатных кредитов для старта."
+      a: "Просто зарегистрируйтесь, следуйте инструкциям и запустите свой первый автогенеринг."
     },
     {
-      q: "Это безопасно для моего аккаунта?",
-      a: "Абсолютно. Мы используем официальные методы взаимодействия через браузер, имитируя действия пользователя. Ваши данные Discord хранятся локально."
+      q: "В безопасности ли мои данные?",
+      a: "Да. ваши данные в безопасности.\nРасширение создано для одной задачи - автоматизировать отправку промптов. Оно не следит за вами и не собирает личную информацию.\nУ расширения ограниченные права доступа.\nЭто значит, что оно может работать только на конкретных сайтах, которые указаны в настройках Chrome, и только для своей функции. Все эти разрешения прозрачны и видны пользователю - вы можете проверить их в любой момент."
     },
     {
-      q: "Можно ли отменить подписку?",
-      a: "У нас нет автоматических списаний. Вы покупаете пакет кредитов один раз. Когда они закончатся, вы просто покупаете новый пакет."
+      q: "Могут ли быть проблемы с Midjourney?",
+      a: "На данный момент Midjourney официально не разрешает прямую автоматизацию генерации. Поэтому любые инструменты автогенеринга, включая наш, не могут быть на 100% гарантированно безопасными с точки зрения правил Midjourney.\n\nЧто важно: мы сделали всё возможное, чтобы минимизировать риск блокировок. Во время тестирования сервиса с нашей стороны - у нас не было ни одного случая, за более чем 6 месяцев тестов.\n\nМы не скрываем ограничения и не обещаем невозможного. Наша задача - дать инструмент и честно объяснить все нюансы."
     },
     {
-      q: "Работает ли это с Midjourney v6?",
-      a: "Да, мы поддерживаем все актуальные версии Midjourney, включая v6 и Niji mode."
+      q: "Это подписка или разовый платеж?",
+      a: "Это не подписка, у нас нету ежемесячных или автоматических списаний.\nВы покупаете пакет кредитов один раз. Когда они закончатся, вы просто покупаете новый пакет."
+    },
+    {
+      q: "Как можно оплатить?",
+      a: "Вы можете оплатить любой картой, любого банка, любой страны.\nОплата проходит через Tribute - официальный платёжный сервис внутри Telegram."
     }
   ];
 
   const [selectedCredits, setSelectedCredits] = useState(500);
 
   const creditOptions = [
-    { id: 'credit_500', amount: 500, price: 1.05, discount: null },
-    { id: 'credit_1000', amount: 1000, price: 1.68, discount: '-20%' },
-    { id: 'credit_2000', amount: 2000, price: 3.36, discount: '-20%' },
-    { id: 'credit_5000', amount: 5000, price: 6.30, discount: '-40%' },
+    { id: 'credit_500', amount: 500, price: 2, discount: null },
+    { id: 'credit_1000', amount: 1000, price: 3.6, discount: '-10%' },
+    { id: 'credit_2000', amount: 2000, price: 6.4, discount: '-20%' },
+    { id: 'credit_5000', amount: 5000, price: 14, discount: '-30%' },
   ];
 
   const currentOption = creditOptions.find(opt => opt.amount === selectedCredits) || creditOptions[0];
@@ -104,13 +112,13 @@ export default function HomePage() {
 
           <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-8 leading-[1.1]">
             Автоматизируйте свой <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
-              Midjourney
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500 font-extrabold">
+              ГЕНЕРИНГ
             </span>
           </h1>
 
           <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Полноценная автоматизация Midjourney прямо в вашем браузере.
+            Полноценная автоматизация генеринга прямо в вашем браузере.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -140,8 +148,8 @@ export default function HomePage() {
                   </svg>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white tracking-tight">Смотреть демо видео</h3>
-                  <p className="text-sm text-gray-400">Узнайте как это работает за 60 секунд</p>
+                  <h3 className="text-xl font-bold text-white tracking-tight">Смотреть видео</h3>
+                  <p className="text-sm text-gray-400">Узнайте как запустить генеринг за 60 секунд</p>
                 </div>
               </div>
 
@@ -164,7 +172,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Мгновенный старт</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Никаких сложных настроек сервера. Установили расширение — и вы готовы генерировать шедевры.
+                Никаких сложных настроек. Устанавливаете расширение - и вы готовы генерировать шедевры.
               </p>
             </div>
 
@@ -177,12 +185,12 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Безопасность</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Мы не требуем ваш пароль от Discord. Авторизация происходит локально через токен браузера.
+                Мы не требуем ваш пароль от Discord, не отслеживаем ваши действия и не имеем никакого доступа к вашим личным данным.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#0f0f0f] border border-white/5 hover:border-pink-500/30 transition-colors group">
-              <div className="w-14 h-14 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-400 mb-6 group-hover:scale-110 transition-transform">
+            <div className="p-8 rounded-3xl bg-[#0f0f0f] border border-white/5 hover:border-green-500/30 transition-colors group">
+              <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-400 mb-6 group-hover:scale-110 transition-transform">
                 <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '28px', height: '28px', display: 'block' }}>
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
@@ -190,7 +198,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Экономия времени</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Загрузите более 100 промптов и идите пить кофе. Система сама отправит их с нужной задержкой.
+                Загрузите свои промты и идите пить кофе. Все остальное система сделает за вас.
               </p>
             </div>
           </div>
@@ -205,16 +213,16 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-8">
-              Забудь про ежемесячные подписки
+              Забудьте про ежемесячные подписки
             </h2>
             
             <div className="inline-block text-left space-y-4 mb-16">
               {[
-                'Покупай столько кредитов, сколько тебе нужно',
+                'Покупайте столько кредитов, сколько Вам нужно',
                 'Без ежемесячных платежей и автосписаний',
-                'Пополняй баланс в любое время',
+                'Пополняйте баланс в любое время',
                 'Кредиты можно использовать без ограничения по времени',
-                'Чем больше кредитов покупаешь - тем выгоднее цена',
+                'Чем больше кредитов покупаете - тем выгоднее цена',
               ].map((text, i) => (
                 <div key={i} className="flex items-center gap-4 text-base md:text-lg font-medium text-white/90">
                   <div className="flex-shrink-0 w-6 h-6 rounded-md bg-indigo-500/20 flex items-center justify-center">
@@ -233,9 +241,12 @@ export default function HomePage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-600 to-indigo-500 rounded-[40px] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
               
               <div className="relative bg-[#0a0a0c] rounded-[38px] p-8 md:p-12 border border-white/10 shadow-2xl backdrop-blur-xl">
-                <h3 className="text-indigo-400 font-bold uppercase tracking-widest text-xs mb-10">
-                  Выбери сколько кредитов тебе нужно
+                <h3 className="text-indigo-400 font-bold uppercase tracking-widest text-xs mb-3">
+                  Выберите сколько кредитов Вам нужно
                 </h3>
+                <p className="text-white/60 text-xs mb-10">
+                  1 кредит = 1 отправленный промт
+                </p>
 
                 {/* Credit Buttons Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
@@ -251,7 +262,7 @@ export default function HomePage() {
                     >
                       {option.amount}
                       {option.discount && (
-                        <span className={`absolute -top-2 -right-2 ${option.amount === 5000 ? 'bg-red-600' : 'bg-orange-500'} text-white text-[9px] px-2 py-0.5 rounded-full transform rotate-12 font-black shadow-lg`}>
+                        <span className={`absolute -top-2 -right-2 ${option.amount === 5000 ? 'bg-red-600' : option.amount === 2000 ? 'bg-orange-500' : 'bg-orange-500'} text-white text-[9px] px-2 py-0.5 rounded-full transform rotate-12 font-black shadow-lg`}>
                           {option.discount}
                         </span>
                       )}
@@ -273,8 +284,11 @@ export default function HomePage() {
                   Купить кредиты
                 </Link>
                 
-                <p className="mt-6 text-[10px] text-white/20 font-bold uppercase tracking-widest">
-                  Мгновенное начисление • Без скрытых комиссий
+                <p className="mt-6 text-[10px] text-white/20 font-bold uppercase tracking-widest text-center">
+                  Нажимая кнопку «Купить кредиты», вы соглашаетесь с{' '}
+                  <Link href="/offer" className="text-white/40 hover:text-white/60 underline">
+                    условиями Оферты
+                  </Link>
                 </p>
               </div>
             </div>
@@ -301,7 +315,7 @@ export default function HomePage() {
                 </button>
                 
                 {openFaq === idx && (
-                  <div className="px-6 pb-6 pt-0 text-gray-400 text-sm leading-relaxed animate-fade-in">
+                  <div className="px-6 pb-6 pt-0 text-gray-400 text-sm leading-relaxed animate-fade-in whitespace-pre-line">
                     {item.a}
                   </div>
                 )}

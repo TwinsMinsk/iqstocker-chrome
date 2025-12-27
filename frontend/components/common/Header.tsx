@@ -3,15 +3,30 @@
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  // Предотвращаем hydration mismatch - проверяем аутентификацию только на клиенте
+  // На сервере mounted = false, поэтому всегда показываем "Войти"
+  // На клиенте после монтирования (mounted = true) показываем реальное состояние
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     router.push('/');
   };
+  
+  // Для локальной разработки: всегда показываем "Войти" до монтирования, чтобы избежать hydration mismatch
+  // На сервере (mounted = false) всегда показываем "Войти"
+  // На клиенте после монтирования (mounted = true) показываем реальное состояние
+  // В production это работает так же, но там обычно нет таких расхождений
+  const showAuthContent = mounted;
 
   return (
     <header className="sticky top-0 z-50 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5">
@@ -22,7 +37,7 @@ export function Header() {
             className="flex items-center gap-2 group"
           >
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-[0_0_20px_rgba(79,70,229,0.4)] group-hover:scale-110 transition-transform text-white">IQ</div>
-            <span className="text-xl font-black tracking-tighter text-white">STOCKER<span className="text-white/40">AUTO</span></span>
+            <span className="text-xl font-black tracking-tighter text-white">СТОКЕР<span className="text-white/40">ГЕНЕРИНГ</span></span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-10">
@@ -31,8 +46,11 @@ export function Header() {
             <Link href="/#faq" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">FAQ</Link>
           </nav>
 
-          <div className="flex items-center gap-4">
-            {isAuthenticated ? (
+          <div 
+            className="flex items-center gap-4"
+            suppressHydrationWarning={process.env.NODE_ENV === 'development'}
+          >
+            {showAuthContent && isAuthenticated ? (
               <div className="flex items-center gap-6">
                 <Link
                   href="/dashboard"

@@ -11,7 +11,16 @@ export default function DashboardPage() {
   const { isAuthenticated, fetchUser, user, accessToken } = useAuthStore();
   const router = useRouter();
 
+  // Для локальной разработки: отключаем проверку аутентификации
+  const DEV_MODE = process.env.NODE_ENV === 'development';
+  const mockUser = { email: 'dev@example.com' };
+
   useEffect(() => {
+    // В режиме разработки пропускаем проверки
+    if (DEV_MODE) {
+      return;
+    }
+
     // Если есть токен, но пользователь не загружен, загружаем его
     if (accessToken && !user) {
       fetchUser();
@@ -28,9 +37,10 @@ export default function DashboardPage() {
     if (isAuthenticated && !user) {
       fetchUser();
     }
-  }, [isAuthenticated, accessToken, user, router, fetchUser]);
+  }, [isAuthenticated, accessToken, user, router, fetchUser, DEV_MODE]);
 
-  if (!isAuthenticated) {
+  // В режиме разработки всегда показываем страницу
+  if (!DEV_MODE && !isAuthenticated) {
     return null;
   }
 
@@ -41,7 +51,7 @@ export default function DashboardPage() {
           <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Рабочая область</h1>
           <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
             С ВОЗВРАЩЕНИЕМ,<br/>
-            <span className="text-white/40">{user?.email?.split('@')[0].toUpperCase()}</span>
+            <span className="text-white/40">{(DEV_MODE ? mockUser : user)?.email?.split('@')[0].toUpperCase() || 'DEV'}</span>
           </h2>
         </header>
 
@@ -60,7 +70,6 @@ export default function DashboardPage() {
         
         <footer className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-white/20 uppercase tracking-[0.2em]">
            <div>Статус: Все системы работают</div>
-           <div>IQStocker Auto v1.0.0</div>
         </footer>
       </div>
     </div>

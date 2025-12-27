@@ -145,8 +145,9 @@ class ExtensionService:
                 }
         
         # 5. НЕ списываем кредиты здесь! Только проверяем баланс.
-        # Кредиты будут списываться при успешной отправке каждого промпта в finalize_session.
-        # Это гарантирует, что списываются только успешно отправленные промпты.
+        # Кредиты списываются:
+        # - в основном через deduct_credit (после подтверждённой отправки промпта)
+        # - а также "страховочно" через finalize_session (досписание, если deduct_credit не дошёл)
         
         # 6. Generate session token
         session_token = self._generate_session_token(str(user.id), prompts_count)
@@ -235,6 +236,14 @@ class ExtensionService:
         
         session_data = json.loads(session_json)
         
+        # Базовая валидация prompt_index: защищает от случайных/злонамеренных индексов
+        prompts_count = int(session_data.get("prompts_count", 0) or 0)
+        if prompt_index < 0 or (prompts_count and prompt_index >= prompts_count):
+            return {
+                "success": False,
+                "message": "Invalid prompt index"
+            }
+
         # Проверить, не финализирована ли уже сессия
         if session_data.get("is_finalized"):
             return {
@@ -337,28 +346,54 @@ class ExtensionService:
             }
         
         session_data = json.loads(session_json)
-        
-        if session_data.get("is_finalized"):
-            return {
-                "success": True,
-                "message": "Session already finalized"
-            }
-        
-        # 2. Получить подписку для возврата баланса
+
+        # 2. Получить подписку (нужна и для идемпотентного ответа тоже)
         subscription = self.db.query(Subscription).filter(
             Subscription.user_id == session_data["user_id"]
         ).first()
-        
+
         if not subscription:
             return {
                 "success": False,
                 "message": "Subscription not found"
             }
-        
-        # 3. Кредиты уже списаны через deduct_credit при успешной отправке каждого промпта
-        # Здесь только финализируем сессию
-        credits_deducted = session_data.get("credits_deducted", 0)
-        
+
+        # Идемпотентность: если сессия уже финализирована — возвращаем стабильный ответ
+        if session_data.get("is_finalized"):
+            credits_deducted = int(session_data.get("credits_deducted", 0) or 0)
+            return {
+                "success": True,
+                "message": "Session already finalized",
+                "credits_used": credits_deducted,
+                "credits_remaining": subscription.credits_balance,
+                "session_duration_seconds": duration_seconds
+            }
+
+        # 3. "Страховочное" досписание кредитов на финализации.
+        # Это закрывает обход, когда клиент не вызывает /deduct-credit (или запросы блокируются),
+        # но при этом промпты фактически отправлены.
+        prompts_count = int(session_data.get("prompts_count", 0) or 0)
+        to_charge = min(int(prompts_sent or 0), prompts_count)
+        credits_deducted = int(session_data.get("credits_deducted", 0) or 0)
+        missing = max(0, to_charge - credits_deducted)
+
+        if missing > 0:
+            if subscription.credits_balance < missing:
+                # Fail-closed: финализацию не подтверждаем, если не можем списать.
+                # Это также защищает от "накрутки prompts_sent" клиентом.
+                return {
+                    "success": False,
+                    "message": "Insufficient credits to finalize session"
+                }
+
+            subscription.credits_balance -= missing
+            subscription.used_this_month += missing
+            self.db.commit()
+
+            # Обновим счётчик списаний в сессии
+            credits_deducted += missing
+            session_data["credits_deducted"] = credits_deducted
+
         # 4. Пометить сессию как finalized
         session_data["is_finalized"] = True
         session_data["finalized_at"] = datetime.utcnow().isoformat()
@@ -374,7 +409,7 @@ class ExtensionService:
         return {
             "success": True,
             "message": "Session finalized successfully",
-            "credits_used": credits_deducted,  # Используем фактически списанные кредиты
+            "credits_used": int(credits_deducted),  # Списано фактически (deduct + finalize top-up)
             "credits_remaining": subscription.credits_balance,
             "session_duration_seconds": duration_seconds
         }

@@ -11,6 +11,9 @@ from fastapi.testclient import TestClient
 # чтобы избежать проблем с middleware и конфигурацией
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DEBUG"] = "true"
+# ВАЖНО: В тестах используем SQLite, иначе модели будут пытаться использовать UUID тип PostgreSQL
+# и Base.metadata.create_all упадёт на SQLite.
+os.environ["USE_SQLITE"] = "true"
 
 # Очищаем кэш settings, чтобы перезагрузить конфигурацию с новыми переменными окружения
 from app.core.config import get_settings

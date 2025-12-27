@@ -12,7 +12,7 @@ docker exec iqstocker-postgres pg_dump -U postgres iqstocker_db | gzip > backup_
 gunzip -c backup_20251225_120000.sql.gz | docker exec -i iqstocker-postgres psql -U postgres iqstocker_db
 ```
 
-### 2. Через скрипты
+### 2. Через скрипты.
 
 ```bash
 # Бэкап

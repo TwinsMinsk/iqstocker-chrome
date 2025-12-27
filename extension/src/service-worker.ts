@@ -388,7 +388,8 @@ if (typeof chrome === 'undefined' || !chrome.runtime) {
       const prompt = state.prompts[state.current_index];
       const promptIndex = state.current_index;
       
-      console.log(`📤 Sending prompt ${promptIndex + 1}/${state.prompts.length} (index ${promptIndex}) to tab ${tabId}: ${prompt.substring(0, 50)}...`);
+      // SECURITY: не логируем текст промпта (это может быть чувствительная информация пользователя)
+      console.log(`📤 Sending prompt ${promptIndex + 1}/${state.prompts.length} (index ${promptIndex}) to tab ${tabId} (len=${prompt.length})`);
       
       // TYPE_PROMPT делает имитацию печатания или paste+enter внутри страницы
       // Мы ждем завершения через специальный механизм событий
@@ -440,74 +441,53 @@ if (typeof chrome === 'undefined' || !chrome.runtime) {
       }
 
       // Промпт успешно отправлен в Discord - списать кредит
-      // ВАЖНО: Кредиты списываются только при успешной отправке, не при ошибках
-      // ВАЖНО: Если списание кредита не удалось, мы НЕ останавливаем очередь,
-      // а только логируем ошибку и продолжаем. Кредит можно списать позже при финализации.
+      // SECURITY (fail-closed): если списать кредит не удалось, ОСТАНАВЛИВАЕМ очередь.
+      // Иначе это позволяет обойти монетизацию простым блоком API /extensions/deduct-credit.
       
-      let creditDeducted = false;
-      let creditDeductionError: string | null = null;
-      
-      if (state.session_token) {
-        // Получаем актуальное состояние перед списанием для проверки session_token
-        const currentState = await getState();
-        if (currentState.session_token) {
-          // Используем индекс промпта, который только что был отправлен
-          const promptIndexToDeduct = state.current_index;
-          const sessionTokenToUse = currentState.session_token;
-
-          // Списание кредита с повторными попытками
-          let deductResult = null;
-          let deductAttempts = 0;
-          const maxDeductAttempts = 3;
-          
-          while (deductAttempts < maxDeductAttempts && !deductResult?.success) {
-            try {
-              deductAttempts++;
-              console.log(`💰 Attempting to deduct credit (attempt ${deductAttempts}/${maxDeductAttempts}) for prompt index ${promptIndexToDeduct}...`);
-              
-              deductResult = await apiClient.deductCredit(
-                sessionTokenToUse,
-                promptIndexToDeduct
-              );
-              
-              if (deductResult.success) {
-                console.log(`✅ Credit deducted successfully! Remaining: ${deductResult.credits_remaining}, Deducted: ${deductResult.credits_deducted || 1}`);
-                creditDeducted = true;
-                break;
-              } else {
-                console.warn(`⚠️ Deduct credit attempt ${deductAttempts} failed: ${deductResult.message}`);
-                creditDeductionError = deductResult.message || 'Unknown error';
-                
-                // Если это не последняя попытка, ждем перед повторной попыткой
-                if (deductAttempts < maxDeductAttempts) {
-                  const retryDelay = Math.min(1000 * Math.pow(2, deductAttempts - 1), 5000);
-                  console.log(`⏳ Retrying credit deduction in ${retryDelay}ms...`);
-                  await new Promise(r => setTimeout(r, retryDelay));
-                }
-              }
-            } catch (e: any) {
-              console.error(`❌ Credit deduction attempt ${deductAttempts} error:`, e?.message || e);
-              creditDeductionError = e?.message || 'Unknown error';
-              
-              // Если это не последняя попытка, ждем перед повторной попыткой
-              if (deductAttempts < maxDeductAttempts) {
-                const retryDelay = Math.min(1000 * Math.pow(2, deductAttempts - 1), 5000);
-                await new Promise(r => setTimeout(r, retryDelay));
-              }
-            }
-          }
-        } else {
-          creditDeductionError = 'Session token отсутствует в текущем состоянии';
-          console.warn('⚠️ Cannot deduct credit: session_token is missing in current state');
-        }
-      } else {
-        creditDeductionError = 'Session token отсутствует';
-        console.warn('⚠️ Cannot deduct credit: session_token is missing');
+      // Берём актуальный session_token из состояния (защита от гонок)
+      const currentState = await getState();
+      const sessionTokenToUse = currentState.session_token;
+      if (!sessionTokenToUse) {
+        // Сбросить флаг и остановиться
+        await setState({ is_sending: false, sending_started_at: undefined });
+        throw new Error('Session token отсутствует — списание кредита невозможно');
       }
 
-      // ВАЖНО: Увеличиваем индекс и продолжаем работу даже если списание кредита не удалось
-      // Промпт уже отправлен в Discord, поэтому мы должны перейти к следующему
-      // Кредит можно списать позже при финализации сессии или при следующей попытке
+      const promptIndexToDeduct = state.current_index;
+      const maxDeductAttempts = 3;
+      let deductAttempts = 0;
+      let lastDeductError: string | null = null;
+
+      while (deductAttempts < maxDeductAttempts) {
+        deductAttempts++;
+        try {
+          console.log(`💰 Deducting credit (attempt ${deductAttempts}/${maxDeductAttempts}) for prompt index ${promptIndexToDeduct}...`);
+          const deductResult = await apiClient.deductCredit(sessionTokenToUse, promptIndexToDeduct);
+
+          if (deductResult?.success) {
+            console.log(`✅ Credit deducted. Remaining: ${deductResult.credits_remaining}`);
+            lastDeductError = null;
+            break;
+          }
+
+          lastDeductError = deductResult?.message || 'Unknown error';
+        } catch (e: any) {
+          lastDeductError = e?.message || 'Unknown error';
+        }
+
+        if (deductAttempts < maxDeductAttempts) {
+          const retryDelay = Math.min(1000 * Math.pow(2, deductAttempts - 1), 5000);
+          await new Promise((r) => setTimeout(r, retryDelay));
+        }
+      }
+
+      if (lastDeductError) {
+        // FAIL-CLOSED: без подтверждённого списания — стоп.
+        await setState({ is_sending: false, sending_started_at: undefined });
+        throw new Error(`Не удалось списать кредит: ${lastDeductError}`);
+      }
+
+      // Только если списание подтверждено — двигаем индекс
       const nextState = await setState({
         current_index: state.current_index + 1,
         sent_count: state.sent_count + 1,
@@ -515,15 +495,7 @@ if (typeof chrome === 'undefined' || !chrome.runtime) {
         sending_started_at: undefined,
       });
 
-      // Логируем результат
-      if (creditDeducted) {
-        console.log(`✅ Prompt ${state.current_index + 1} sent and credit deducted successfully`);
-      } else {
-        console.warn(`⚠️ Prompt ${state.current_index + 1} sent successfully, but credit deduction failed: ${creditDeductionError || 'Unknown error'}`);
-        console.warn('⚠️ Credit will be deducted later during session finalization or on next attempt');
-        // НЕ увеличиваем errors_count, так как промпт был успешно отправлен
-        // Только логируем для отладки
-      }
+      console.log(`✅ Prompt ${state.current_index + 1} sent and credit deducted successfully`);
 
       // Планируем следующий шаг
       if (nextState.current_index < nextState.prompts.length) {
