@@ -87,7 +87,7 @@ export function ExtensionDownload() {
         <div className="relative z-10">
           <h3 className="text-xs font-black tracking-[0.4em] text-yellow-500/80 uppercase mb-8 flex items-center gap-3">
             <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
-            Рекомендации по безопасности
+            Рекомендации по работе
           </h3>
           
           <ul className="space-y-6">
@@ -95,28 +95,28 @@ export function ExtensionDownload() {
               <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-sm border border-indigo-500/20 group-hover:border-indigo-500/40 transition-colors">1</div>
               <div className="flex-1">
                 <h5 className="text-white font-bold mb-1">Лимит запросов</h5>
-                <p className="text-sm text-white/50 leading-relaxed">Не делайте более <span className="text-indigo-300">300 промптов</span> в день с одного аккаунта для снижения риска блокировки.</p>
+                <p className="text-sm text-white/50 leading-relaxed">Не отправляйте более <span className="text-indigo-300 font-bold">300 промптов</span> в день на один аккаунт Midjourney.</p>
               </div>
             </li>
             <li className="flex gap-5 group">
               <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-sm border border-indigo-500/20 group-hover:border-indigo-500/40 transition-colors">2</div>
               <div className="flex-1">
                 <h5 className="text-white font-bold mb-1">Интервалы генерации</h5>
-                <p className="text-sm text-white/50 leading-relaxed">Рекомендуемый диапазон интервала между запросами от <span className="text-indigo-300">30 до 60 секунд</span>.</p>
+                <p className="text-sm text-white/50 leading-relaxed">Рекомендуемый интервал между запросами - <span className="text-indigo-300 font-bold">от 30 до 60 секунд</span>.</p>
               </div>
             </li>
             <li className="flex gap-5 group">
               <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-sm border border-indigo-500/20 group-hover:border-indigo-500/40 transition-colors">3</div>
               <div className="flex-1">
                 <h5 className="text-white font-bold mb-1">Режим работы</h5>
-                <p className="text-sm text-white/50 leading-relaxed">Распределяйте генерации равномерно в течение дня и делайте перерывы каждые 50-100 промптов на 10-15 минут.</p>
+                <p className="text-sm text-white/50 leading-relaxed">Распределяйте генеринг равномерно в течение недели и делайте <span className="text-indigo-300 font-bold">1-2 выходных</span> каждую неделю.</p>
               </div>
             </li>
              <li className="flex gap-5 group">
               <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-sm border border-indigo-500/20 group-hover:border-indigo-500/40 transition-colors">4</div>
               <div className="flex-1">
-                <h5 className="text-white font-bold mb-1">Мультиаккаунтинг</h5>
-                <p className="text-sm text-white/50 leading-relaxed">Для больших объемов используйте разные браузерные профили для разных аккаунтов Discord.</p>
+                <h5 className="text-white font-bold mb-1">После запуска генеринга</h5>
+                <p className="text-sm text-white/50 leading-relaxed">Чтобы убедиться, что в <span className="text-indigo-300 font-bold">ваших промптах</span> нет ошибок, проверьте корректно ли отправляются первые несколько промптов.</p>
               </div>
             </li>
           </ul>

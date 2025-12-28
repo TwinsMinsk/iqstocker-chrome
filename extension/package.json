@@ -13,6 +13,7 @@
     "fs-extra": "^11.1.0",
     "typescript": "^5.3.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "canvas": "^3.2.0"
+  }
 }
-
