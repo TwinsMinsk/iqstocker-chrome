@@ -30,6 +30,12 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     oauth_google_id = Column(String(255), unique=True, nullable=True)
     telegram_user_id = Column(String(255), unique=True, nullable=True, index=True)
     
+    # === REFERRAL SYSTEM ===
+    # Уникальный реферальный код пользователя (генерируется при регистрации)
+    referral_code = Column(String(12), unique=True, nullable=True, index=True)
+    # ID пользователя, который пригласил (если есть)
+    referred_by_id = Column(ID_TYPE, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)
     email_verified = Column(Boolean, default=False, nullable=False)
@@ -41,6 +47,12 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     license_keys = relationship("LicenseKey", back_populates="user", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     extension_logs = relationship("ExtensionLog", back_populates="user", cascade="all, delete-orphan")
+    referred_users = relationship(
+        "User", 
+        backref="referrer",
+        foreign_keys="[User.referred_by_id]",
+        remote_side="[User.id]"
+    )
     
     def __repr__(self):
         return f"<User(email={self.email}, id={self.id})>"
