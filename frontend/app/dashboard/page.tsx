@@ -60,7 +60,6 @@ export default function DashboardPage() {
         
         <footer className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-white/20 uppercase tracking-[0.2em]">
            <div>Статус: Все системы работают</div>
-           <div>IQStocker Auto v1.0.0</div>
         </footer>
       </div>
     </div>

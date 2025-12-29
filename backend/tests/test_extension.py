@@ -1,6 +1,7 @@
 """
 Тесты для extension endpoints
 """
+import time
 import pytest
 from fastapi import status
 from app.models.user import User
@@ -42,6 +43,74 @@ def user_with_license(db):
     db.refresh(user)
     
     return user, license_key_display, subscription
+
+
+class _FakeRedis:
+    """
+    Минимальный async Redis stub для тестов extension flow.
+
+    Нам нужны только методы, которые используются ExtensionService:
+    - get, setex, exists
+    - set (ex, nx)  -> используется для distributed lock в finalize_session
+    - delete        -> используется для освобождения lock
+
+    Примечания по семантике (приближено к redis-py):
+    - set(..., nx=True) возвращает True при успехе, иначе None
+    - delete(...) возвращает количество удалённых ключей (0/1)
+    - TTL поддерживаем минимально: очищаем ключи лениво при обращениях
+    """
+
+    def __init__(self):
+        self._store = {}
+        self._expires_at = {}  # key -> unix timestamp (time.time())
+
+    def _purge_if_expired(self, key: str) -> None:
+        """Ленивая очистка TTL-ключей при любом обращении."""
+        expires_at = self._expires_at.get(key)
+        if expires_at is None:
+            return
+        if time.time() >= expires_at:
+            self._store.pop(key, None)
+            self._expires_at.pop(key, None)
+
+    async def get(self, key: str):
+        self._purge_if_expired(key)
+        return self._store.get(key)
+
+    async def setex(self, key: str, ttl_seconds: int, value: str):
+        self._store[key] = value
+        self._expires_at[key] = time.time() + int(ttl_seconds or 0)
+        return True
+
+    async def exists(self, key: str):
+        self._purge_if_expired(key)
+        return 1 if key in self._store else 0
+
+    async def set(self, key: str, value: str, ex: int | None = None, nx: bool = False):
+        """
+        Поддержка минимального подмножества Redis SET:
+        - ex: TTL в секундах
+        - nx: "ставим только если ключа нет" (для lock)
+        """
+        self._purge_if_expired(key)
+
+        if nx and key in self._store:
+            return None
+
+        self._store[key] = value
+        if ex is not None:
+            self._expires_at[key] = time.time() + int(ex or 0)
+        else:
+            # В Redis SET без EX сбрасывает TTL (если был) — имитируем это.
+            self._expires_at.pop(key, None)
+        return True
+
+    async def delete(self, key: str):
+        self._purge_if_expired(key)
+        existed = key in self._store
+        self._store.pop(key, None)
+        self._expires_at.pop(key, None)
+        return 1 if existed else 0
 
 
 def test_validate_key_success(client, user_with_license):
@@ -136,4 +205,72 @@ def test_health_check(client):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["status"] == "ok"
+
+
+def test_finalize_session_deducts_missing_credits(client, user_with_license, db, monkeypatch):
+    """
+    SECURITY regression test:
+    Если /deduct-credit не вызывался (или был заблокирован), finalize-session
+    должен "досписать" кредиты по prompts_sent (но не больше prompts_count).
+    """
+    user, license_key, subscription = user_with_license
+    start_balance = subscription.credits_balance
+
+    # Подменяем Redis dependency на фейковый in-memory Redis
+    fake_redis = _FakeRedis()
+    from app.integrations.redis_client import get_redis_client
+    from app.main import app
+    app.dependency_overrides[get_redis_client] = lambda: fake_redis
+
+    try:
+        # 1) Старт сессии: batch-validate сохраняет session в Redis
+        resp = client.post(
+            "/api/v1/extensions/batch-validate",
+            json={"license_key": license_key, "prompts_count": 5},
+        )
+        assert resp.status_code == status.HTTP_200_OK
+        session_token = resp.json()["session_token"]
+
+        # 2) Имитируем факт отправки 3 промптов, но deduct-credit НЕ вызываем
+        fin = client.post(
+            "/api/v1/extensions/finalize-session",
+            json={"session_token": session_token, "prompts_sent": 3, "errors_count": 0},
+        )
+        assert fin.status_code == status.HTTP_200_OK
+        data = fin.json()
+        assert data["success"] is True
+        assert data["credits_used"] == 3
+
+        # 3) Проверяем баланс в БД
+        sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+        assert sub.credits_balance == start_balance - 3
+    finally:
+        app.dependency_overrides.pop(get_redis_client, None)
+
+
+def test_deduct_credit_rejects_out_of_range_index(client, user_with_license, db, monkeypatch):
+    """prompt_index должен быть в диапазоне 0..prompts_count-1"""
+    user, license_key, subscription = user_with_license
+
+    fake_redis = _FakeRedis()
+    from app.integrations.redis_client import get_redis_client
+    from app.main import app
+    app.dependency_overrides[get_redis_client] = lambda: fake_redis
+
+    try:
+        resp = client.post(
+            "/api/v1/extensions/batch-validate",
+            json={"license_key": license_key, "prompts_count": 2},
+        )
+        assert resp.status_code == status.HTTP_200_OK
+        session_token = resp.json()["session_token"]
+
+        bad = client.post(
+            "/api/v1/extensions/deduct-credit",
+            json={"session_token": session_token, "prompt_index": 999},
+        )
+        # Endpoint пробрасывает ошибку как 400
+        assert bad.status_code == status.HTTP_400_BAD_REQUEST
+    finally:
+        app.dependency_overrides.pop(get_redis_client, None)
 

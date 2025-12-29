@@ -3,13 +3,14 @@ Extension Service - Бизнес-логика для защиты расшире
 Реализует batch validation, session management, fingerprinting
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, update
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
 import secrets
 import hashlib
 import hmac
 import json
+import asyncio
 
 from app.models.license_key import LicenseKey
 from app.models.subscription import Subscription
@@ -145,8 +146,9 @@ class ExtensionService:
                 }
         
         # 5. НЕ списываем кредиты здесь! Только проверяем баланс.
-        # Кредиты будут списываться при успешной отправке каждого промпта в finalize_session.
-        # Это гарантирует, что списываются только успешно отправленные промпты.
+        # Кредиты списываются:
+        # - в основном через deduct_credit (после подтверждённой отправки промпта)
+        # - а также "страховочно" через finalize_session (досписание, если deduct_credit не дошёл)
         
         # 6. Generate session token
         session_token = self._generate_session_token(str(user.id), prompts_count)
@@ -235,6 +237,15 @@ class ExtensionService:
         
         session_data = json.loads(session_json)
         
+        # Базовая валидация prompt_index: защищает от случайных/злонамеренных индексов
+        prompts_count = int(session_data.get("prompts_count", 0) or 0)
+        # Явно проверяем все граничные случаи: отрицательные индексы, некорректное количество промптов, выход за границы
+        if prompt_index < 0 or prompts_count <= 0 or prompt_index >= prompts_count:
+            return {
+                "success": False,
+                "message": "Invalid prompt index"
+            }
+
         # Проверить, не финализирована ли уже сессия
         if session_data.get("is_finalized"):
             return {
@@ -337,44 +348,166 @@ class ExtensionService:
             }
         
         session_data = json.loads(session_json)
-        
-        if session_data.get("is_finalized"):
-            return {
-                "success": True,
-                "message": "Session already finalized"
-            }
-        
-        # 2. Получить подписку для возврата баланса
+
+        # 2. Получить подписку (нужна и для идемпотентного ответа тоже)
         subscription = self.db.query(Subscription).filter(
             Subscription.user_id == session_data["user_id"]
         ).first()
-        
+
         if not subscription:
             return {
                 "success": False,
                 "message": "Subscription not found"
             }
+
+        # Идемпотентность: если сессия уже финализирована — возвращаем стабильный ответ
+        if session_data.get("is_finalized"):
+            credits_deducted = int(session_data.get("credits_deducted", 0) or 0)
+            return {
+                "success": True,
+                "message": "Session already finalized",
+                "credits_used": credits_deducted,
+                "credits_remaining": subscription.credits_balance,
+                "session_duration_seconds": duration_seconds
+            }
+
+        # SECURITY: Redis-блокировка для предотвращения race condition
+        # Используем SETNX (SET if Not eXists) для атомарной блокировки
+        lock_key = f"lock:finalize:{session_token}"
+        lock_acquired = await self.redis.set(lock_key, "1", ex=10, nx=True)  # TTL 10 секунд
         
-        # 3. Кредиты уже списаны через deduct_credit при успешной отправке каждого промпта
-        # Здесь только финализируем сессию
-        credits_deducted = session_data.get("credits_deducted", 0)
-        
-        # 4. Пометить сессию как finalized
+        if not lock_acquired:
+            # Другой процесс уже финализирует эту сессию - ждём и проверяем результат
+            # Даём время на завершение (максимум 2 секунды)
+            for _ in range(20):  # 20 попыток по 0.1 секунды = 2 секунды
+                await asyncio.sleep(0.1)
+                session_json_retry = await self.redis.get(session_key)
+                if session_json_retry:
+                    session_data_retry = json.loads(session_json_retry)
+                    if session_data_retry.get("is_finalized"):
+                        # Сессия финализирована другим процессом
+                        credits_deducted = int(session_data_retry.get("credits_deducted", 0) or 0)
+                        # Перезагружаем subscription для актуального баланса
+                        subscription = self.db.query(Subscription).filter(
+                            Subscription.user_id == session_data["user_id"]
+                        ).first()
+                        return {
+                            "success": True,
+                            "message": "Session finalized by another request",
+                            "credits_used": credits_deducted,
+                            "credits_remaining": subscription.credits_balance if subscription else 0,
+                            "session_duration_seconds": duration_seconds
+                        }
+            
+            # Если блокировка не освободилась - возвращаем ошибку
+            return {
+                "success": False,
+                "message": "Session finalization in progress, please retry"
+            }
+
+        try:
+            # 3. "Страховочное" досписание кредитов на финализации.
+            # Это закрывает обход, когда клиент не вызывает /deduct-credit (или запросы блокируются),
+            # но при этом промпты фактически отправлены.
+            prompts_count = int(session_data.get("prompts_count", 0) or 0)
+            to_charge = min(int(prompts_sent or 0), prompts_count)
+            credits_deducted = int(session_data.get("credits_deducted", 0) or 0)
+            missing = max(0, to_charge - credits_deducted)
+
+            if missing > 0:
+                # SECURITY: Проверяем баланс перед SQL-обновлением
+                # Перезагружаем subscription для актуального баланса (защита от race condition)
+                subscription = self.db.query(Subscription).filter(
+                    Subscription.user_id == session_data["user_id"]
+                ).first()
+                
+                if subscription.credits_balance < missing:
+                    # Fail-closed: финализацию не подтверждаем, если не можем списать.
+                    # Это также защищает от "накрутки prompts_sent" клиентом.
+                    await self.redis.delete(lock_key)  # Освобождаем блокировку
+                    return {
+                        "success": False,
+                        "message": "Insufficient credits to finalize session"
+                    }
+
+                # SECURITY: SQL-уровневое атомарное обновление вместо ORM
+                # Это предотвращает race condition: два запроса не могут одновременно вычесть кредиты
+                # UPDATE выполняется атомарно на уровне БД
+                result = self.db.execute(
+                    update(Subscription)
+                    .where(
+                        and_(
+                            Subscription.user_id == session_data["user_id"],
+                            Subscription.credits_balance >= missing  # Дополнительная проверка в SQL
+                        )
+                    )
+                    .values(
+                        credits_balance=Subscription.credits_balance - missing,
+                        used_this_month=Subscription.used_this_month + missing
+                    )
+                )
+                
+                # Проверяем, что обновление действительно произошло
+                if result.rowcount == 0:
+                    # Баланс изменился между проверкой и обновлением (race condition пойман)
+                    await self.redis.delete(lock_key)  # Освобождаем блокировку
+                    return {
+                        "success": False,
+                        "message": "Insufficient credits to finalize session (balance changed)"
+                    }
+                
+                # Перезагружаем subscription для получения актуального баланса
+                self.db.refresh(subscription)
+                
+                # Обновим счётчик списаний в сессии
+                credits_deducted += missing
+                session_data["credits_deducted"] = credits_deducted
+        finally:
+            # Всегда освобождаем блокировку
+            await self.redis.delete(lock_key)
+
+        # 4. Пометить сессию как finalized в Redis ПЕРЕД коммитом БД
+        # Это критично для атомарности: если Redis упадет, мы откатим транзакцию БД
+        # Если БД commit упадет, Redis уже помечен - при повторном вызове будет idempotency check
         session_data["is_finalized"] = True
         session_data["finalized_at"] = datetime.utcnow().isoformat()
         session_data["prompts_sent"] = prompts_sent
         session_data["errors_count"] = errors_count
         
-        await self.redis.setex(
-            session_key,
-            3600,  # Хранить ещё час для логов
-            json.dumps(session_data)
-        )
+        try:
+            # Обновляем Redis ПЕРЕД коммитом БД для атомарности
+            await self.redis.setex(
+                session_key,
+                3600,  # Хранить ещё час для логов
+                json.dumps(session_data)
+            )
+        except Exception as redis_error:
+            # Если Redis упал - откатываем транзакцию БД
+            # Это предотвращает ситуацию, когда кредиты списаны, но флаг не установлен
+            self.db.rollback()
+            return {
+                "success": False,
+                "message": f"Failed to finalize session in Redis: {redis_error}"
+            }
+        
+        # Коммитим изменения в БД только после успешного обновления Redis
+        # Если commit упадет - Redis уже помечен, при повторном вызове будет idempotency check
+        try:
+            self.db.commit()
+        except Exception as db_error:
+            # Если БД commit упал, Redis уже помечен как finalized
+            # При повторном вызове будет idempotency check (строка 363) - безопасно
+            # Но логируем ошибку для мониторинга
+            self.db.rollback()
+            return {
+                "success": False,
+                "message": f"Failed to commit database changes: {db_error}"
+            }
         
         return {
             "success": True,
             "message": "Session finalized successfully",
-            "credits_used": credits_deducted,  # Используем фактически списанные кредиты
+            "credits_used": int(credits_deducted),  # Списано фактически (deduct + finalize top-up)
             "credits_remaining": subscription.credits_balance,
             "session_duration_seconds": duration_seconds
         }

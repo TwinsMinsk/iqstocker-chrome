@@ -1,7 +1,7 @@
 ﻿{
     "manifest_version":  3,
-    "name":  "IQStocker Chrome Auto",
-    "version":  "1.0.5",
+    "name":  "IQСтокер Генеринг",
+    "version":  "1.0.6",
     "description":  "Автоматизируй отправку промптов в Midjourney через Discord",
     "permissions":  [
                         "storage",
@@ -16,7 +16,7 @@
                          ],
     "action":  {
                    "default_popup":  "popup.html",
-                   "default_title":  "IQStocker Chrome Auto"
+                   "default_title":  "IQСтокер Генеринг"
                },
     "background":  {
                        "service_worker":  "service-worker.js"

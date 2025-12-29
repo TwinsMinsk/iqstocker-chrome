@@ -13,13 +13,18 @@ from app.integrations.redis_client import init_redis, close_redis
 from app.db.init_db import init_db
 
 # Initialize Sentry
-if settings.SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        integrations=[FastApiIntegration()],
-        traces_sample_rate=0.1,
-        environment=settings.ENVIRONMENT,
-    )
+# В тестовом окружении Sentry не нужен и может ломать импорт при некорректном DSN.
+if settings.ENVIRONMENT != "test" and settings.SENTRY_DSN:
+    try:
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            integrations=[FastApiIntegration()],
+            traces_sample_rate=0.1,
+            environment=settings.ENVIRONMENT,
+        )
+    except Exception as e:
+        # Fail-open: не блокируем запуск API из-за мониторинга.
+        print(f"⚠️ Sentry init failed: {e}")
 
 app = FastAPI(
     title="IQStocker Chrome Auto API",

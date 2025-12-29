@@ -7,6 +7,10 @@
 import { apiClient } from './utils/api-client';
 import { cleanPrompts, parsePromptsFromText } from './utils/prompt-cleaner';
 
+// Версия расширения (автоматически подставляется при сборке)
+declare const __EXTENSION_VERSION__: string;
+const EXTENSION_VERSION = typeof __EXTENSION_VERSION__ !== 'undefined' ? __EXTENSION_VERSION__ : '1.0.0';
+
 // Состояние UI
 interface UIState {
   licenseKey: string;
@@ -646,7 +650,7 @@ function render(): void {
   
   app.innerHTML = `
     <div class="header">
-      <h1>Midjourney Auto</h1>
+      <h1>IQ Стокер Генеринг</h1>
       ${state.balance !== null ? `<div class="balance">Баланс: ${state.balance} кредитов</div>` : ''}
     </div>
     
@@ -800,6 +804,10 @@ function render(): void {
       >
         ⏹️ Stop
       </button>
+    </div>
+    
+    <div class="version-footer">
+      <span>v${EXTENSION_VERSION}</span>
     </div>
   `;
   

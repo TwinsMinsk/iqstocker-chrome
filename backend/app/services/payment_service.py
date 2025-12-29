@@ -266,22 +266,29 @@ class PaymentService:
             return None
         name_lower = name.lower()
         
-        if "500" in name_lower:
-            return "credit_500"
-        elif "1000" in name_lower:
-            return "credit_1000"
-        elif "2000" in name_lower:
-            return "credit_2000"
-        elif "5000" in name_lower:
+        # Проверяем новые планы (приоритет для больших сумм)
+        if "10000" in name_lower or "10000" in name:
+            return "credit_10000"
+        elif "5000" in name_lower or "5000" in name:
             return "credit_5000"
+        elif "2500" in name_lower or "2500" in name:
+            return "credit_2500"
+        elif "500" in name_lower and "2500" not in name_lower and "5000" not in name_lower and "10000" not in name_lower:
+            return "credit_500"
         
-        # Совместимость со старыми планами
+        # Совместимость со старыми планами (для обратной совместимости)
+        if "1000" in name_lower:
+            return "credit_2500"  # Маппинг старого плана на новый
+        elif "2000" in name_lower:
+            return "credit_5000"  # Маппинг старого плана на новый
+        
+        # Совместимость со старыми названиями
         if "basic" in name_lower:
-            return "credit_1000"
+            return "credit_2500"
         elif "standard" in name_lower:
             return "credit_5000"
         elif "pro" in name_lower:
-            return "credit_5000"  # Или маппинг на что-то другое
+            return "credit_10000"
             
         return None
     

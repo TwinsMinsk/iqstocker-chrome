@@ -55,8 +55,24 @@ async function getApiBaseUrl(): Promise<string> {
   const result = await chrome.storage.local.get('api_base_url');
   const candidate: string | undefined = result.api_base_url;
 
+  // ВАЖНО (security): в production нельзя позволять пользователю/атакующему
+  // указывать свой backend — это упрощает форк/копирование расширения.
+  // Для разработки override можно включать через build-time флаг.
+  //
+  // Флаг задаётся в esbuild define, см. extension/build/build.js
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allowCustomApiUrl = typeof (globalThis as any).__ALLOW_CUSTOM_API_URL__ === 'boolean'
+    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (globalThis as any).__ALLOW_CUSTOM_API_URL__
+    : false;
+
   // Если пользователь не задал кастомный URL, используем production
   if (!candidate || typeof candidate !== 'string') {
+    return getDefaultApiUrl();
+  }
+
+  // В production игнорируем кастомный URL полностью
+  if (!allowCustomApiUrl) {
     return getDefaultApiUrl();
   }
 

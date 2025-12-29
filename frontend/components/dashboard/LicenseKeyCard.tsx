@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersAPI } from '@/services/api/users';
-import Link from 'next/link';
 import { Modal } from '@/components/common/Modal';
 
 export function LicenseKeyCard() {
@@ -54,7 +53,7 @@ export function LicenseKeyCard() {
       <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/20 blur-3xl -z-10"></div>
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/20 blur-3xl -z-10"></div>
       
-      <h3 className="text-sm font-black tracking-[0.2em] text-indigo-300 uppercase mb-8 drop-shadow-lg">Авторизация лицензии</h3>
+      <h3 className="text-sm font-black tracking-[0.2em] text-indigo-300 uppercase mb-8 drop-shadow-lg">Лицензионный ключ</h3>
       
       <div className="flex-1 flex flex-col">
       {isLoading ? (
@@ -124,7 +123,7 @@ export function LicenseKeyCard() {
       >
         <div className="space-y-6 text-white/70">
           <p className="text-lg leading-relaxed font-light">
-            Лицензионный ключ необходим для авторизации вашего расширения в системе. Следуйте этим простым шагам:
+            Лицензионный ключ необходим для начала работы с сервисом. Следуйте этим простым шагам:
           </p>
           
           <div className="space-y-4">
@@ -134,7 +133,7 @@ export function LicenseKeyCard() {
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">2</div>
-              <p className="leading-relaxed">Откройте расширение <span className="text-white font-bold">IQStocker Auto</span> в панели расширений вашего браузера Chrome.</p>
+              <p className="leading-relaxed">Откройте расширение <span className="text-white font-bold">IQСтокер Генеринг</span> в панели расширений вашего браузера Chrome.</p>
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">3</div>

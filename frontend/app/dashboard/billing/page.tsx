@@ -8,10 +8,10 @@ import { billingAPI, type Plan } from '@/services/api/billing';
 
 // Дефолтные планы на случай если API не вернет данные
 const DEFAULT_PLANS: Plan[] = [
-  { id: 'credit_500', name: '500 Credits', price_eur: 1.05, credits: 500, duration_days: 365, description: '' },
-  { id: 'credit_1000', name: '1000 Credits', price_eur: 1.68, credits: 1000, duration_days: 365, description: '' },
-  { id: 'credit_2000', name: '2000 Credits', price_eur: 3.36, credits: 2000, duration_days: 365, description: '' },
-  { id: 'credit_5000', name: '5000 Credits', price_eur: 6.30, credits: 5000, duration_days: 365, description: '' },
+  { id: 'credit_500', name: '500 Credits', price_eur: 2, credits: 500, duration_days: 365, description: '' },
+  { id: 'credit_2500', name: '2500 Credits', price_eur: 9, credits: 2500, duration_days: 365, description: '' },
+  { id: 'credit_5000', name: '5000 Credits', price_eur: 16, credits: 5000, duration_days: 365, description: '' },
+  { id: 'credit_10000', name: '10000 Credits', price_eur: 24, credits: 10000, duration_days: 365, description: '' },
 ];
 
 export default function BillingPage() {
@@ -109,9 +109,12 @@ export default function BillingPage() {
           <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 rounded-[40px] blur-2xl opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200"></div>
           
           <div className="relative bg-[#0a0a0c] rounded-[40px] p-8 md:p-14 border border-white/10 shadow-2xl backdrop-blur-xl">
-            <h3 className="text-[#848aff] font-black uppercase tracking-[0.3em] text-[10px] mb-14">
+            <h3 className="text-[#848aff] font-black uppercase tracking-[0.3em] text-[10px] mb-3">
               ВЫБЕРИ СКОЛЬКО КРЕДИТОВ ТЕБЕ НУЖНО
             </h3>
+            <p className="text-white/60 text-xs mb-14">
+              1 кредит = 1 отправленный промт
+            </p>
 
             {/* Сетка кнопок выбора */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-20">
@@ -126,13 +129,18 @@ export default function BillingPage() {
                   }`}
                 >
                   {plan.credits}
-                  {(plan.id === 'credit_1000' || plan.id === 'credit_2000') && (
-                    <span className="absolute -top-3 -right-3 bg-[#ff6b00] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
-                      -20%
+                  {plan.id === 'credit_2500' && (
+                    <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                      -10%
                     </span>
                   )}
                   {plan.id === 'credit_5000' && (
-                    <span className="absolute -top-3 -right-3 bg-[#ff0000] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                    <span className="absolute -top-3 -right-3 bg-cyan-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                      -20%
+                    </span>
+                  )}
+                  {plan.id === 'credit_10000' && (
+                    <span className="absolute -top-3 -right-3 bg-purple-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
                       -40%
                     </span>
                   )}
@@ -156,8 +164,11 @@ export default function BillingPage() {
               {purchasing ? 'ОБРАБОТКА...' : 'Купить кредиты'}
             </button>
             
-            <p className="mt-10 text-[10px] text-white/10 font-black uppercase tracking-[0.4em]">
-              МГНОВЕННОЕ НАЧИСЛЕНИЕ • БЕЗ СКРЫТЫХ КОМИССИЙ
+            <p className="mt-10 text-[10px] text-white/20 font-bold uppercase tracking-widest text-center">
+              Нажимая кнопку «Купить кредиты», вы соглашаетесь с{' '}
+              <Link href="/offer" className="text-white/40 hover:text-white/60 underline">
+                условиями Оферты
+              </Link>
             </p>
           </div>
         </div>
