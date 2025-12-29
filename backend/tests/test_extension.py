@@ -1,6 +1,7 @@
 """
 Тесты для extension endpoints
 """
+import time
 import pytest
 from fastapi import status
 from app.models.user import User
@@ -50,21 +51,66 @@ class _FakeRedis:
 
     Нам нужны только методы, которые используются ExtensionService:
     - get, setex, exists
+    - set (ex, nx)  -> используется для distributed lock в finalize_session
+    - delete        -> используется для освобождения lock
+
+    Примечания по семантике (приближено к redis-py):
+    - set(..., nx=True) возвращает True при успехе, иначе None
+    - delete(...) возвращает количество удалённых ключей (0/1)
+    - TTL поддерживаем минимально: очищаем ключи лениво при обращениях
     """
 
     def __init__(self):
         self._store = {}
+        self._expires_at = {}  # key -> unix timestamp (time.time())
+
+    def _purge_if_expired(self, key: str) -> None:
+        """Ленивая очистка TTL-ключей при любом обращении."""
+        expires_at = self._expires_at.get(key)
+        if expires_at is None:
+            return
+        if time.time() >= expires_at:
+            self._store.pop(key, None)
+            self._expires_at.pop(key, None)
 
     async def get(self, key: str):
+        self._purge_if_expired(key)
         return self._store.get(key)
 
     async def setex(self, key: str, ttl_seconds: int, value: str):
-        # TTL в тестах не симулируем — нам важнее семантика хранения
         self._store[key] = value
+        self._expires_at[key] = time.time() + int(ttl_seconds or 0)
         return True
 
     async def exists(self, key: str):
+        self._purge_if_expired(key)
         return 1 if key in self._store else 0
+
+    async def set(self, key: str, value: str, ex: int | None = None, nx: bool = False):
+        """
+        Поддержка минимального подмножества Redis SET:
+        - ex: TTL в секундах
+        - nx: "ставим только если ключа нет" (для lock)
+        """
+        self._purge_if_expired(key)
+
+        if nx and key in self._store:
+            return None
+
+        self._store[key] = value
+        if ex is not None:
+            self._expires_at[key] = time.time() + int(ex or 0)
+        else:
+            # В Redis SET без EX сбрасывает TTL (если был) — имитируем это.
+            self._expires_at.pop(key, None)
+        return True
+
+    async def delete(self, key: str):
+        self._purge_if_expired(key)
+        existed = key in self._store
+        self._store.pop(key, None)
+        self._expires_at.pop(key, None)
+        return 1 if existed else 0
 
 
 def test_validate_key_success(client, user_with_license):
