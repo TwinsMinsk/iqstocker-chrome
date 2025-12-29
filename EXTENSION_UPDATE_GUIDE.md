@@ -49,12 +49,15 @@ frontend/public/downloads/extension/
    - Версия берется из `frontend/public/downloads/extension/latest.json`
    - Обновляется автоматически при запуске `package-extension.ps1`
    - Отображается через API `/api/extensions/latest`
+   - Поле версии имеет желтую рамку для выделения
 
 **Как это работает:**
 - При сборке (`npm run build`) скрипт `build/build.js` читает версию из `manifest.json`
 - Версия подставляется в код через esbuild `define: { '__EXTENSION_VERSION__': '...' }`
 - При упаковке (`package-extension.ps1`) версия обновляется в `manifest.json` (если указан параметр `-Version`)
 - Создается `latest.json` с метаданными версии для сайта
+- Компонент `ExtensionDownload` автоматически загружает версию через API при монтировании
+- Версия отображается в выделенном поле с желтой рамкой
 
 ## Примечания
 

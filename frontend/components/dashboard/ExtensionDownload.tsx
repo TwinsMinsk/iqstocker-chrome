@@ -13,18 +13,42 @@ export function ExtensionDownload() {
    */
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [versionLoading, setVersionLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const res = await fetch('/api/extensions/latest', { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = (await res.json()) as { version?: string };
-        if (!cancelled) setLatestVersion(data?.version ?? null);
-      } catch {
+        const res = await fetch('/api/extensions/latest', { 
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          }
+        });
+        
+        if (!res.ok) {
+          console.warn('Failed to fetch extension version:', res.status, res.statusText);
+          return;
+        }
+        
+        const data = (await res.json()) as { version?: string; error?: string };
+        
+        if (data.error) {
+          console.warn('Extension version API error:', data.error);
+          return;
+        }
+        
+        if (!cancelled && data.version) {
+          setLatestVersion(data.version);
+        }
+      } catch (error) {
+        console.error('Error fetching extension version:', error);
         // Молча игнорируем: UX не должен ломаться из-за метаданных
+      } finally {
+        if (!cancelled) {
+          setVersionLoading(false);
+        }
       }
     })();
 
@@ -56,8 +80,8 @@ export function ExtensionDownload() {
 
           <div className="text-xs font-bold tracking-[0.2em] uppercase text-white/30 mb-8">
             Актуальная версия:{' '}
-            <span className="text-white/60">
-              {latestVersion ? `v${latestVersion}` : '—'}
+            <span className="text-indigo-300 border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 rounded-lg inline-block font-semibold">
+              {versionLoading ? 'Загрузка...' : latestVersion ? `v${latestVersion}` : '—'}
             </span>
           </div>
           
