@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersAPI } from '@/services/api/users';
-import Link from 'next/link';
 import { Modal } from '@/components/common/Modal';
 
 export function LicenseKeyCard() {
