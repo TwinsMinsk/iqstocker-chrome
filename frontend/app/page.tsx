@@ -90,9 +90,9 @@ export default function HomePage() {
 
   const creditOptions = [
     { id: 'credit_500', amount: 500, price: 2, discount: null },
-    { id: 'credit_1000', amount: 1000, price: 3.6, discount: '-10%' },
-    { id: 'credit_2000', amount: 2000, price: 6.4, discount: '-20%' },
-    { id: 'credit_5000', amount: 5000, price: 14, discount: '-30%' },
+    { id: 'credit_2500', amount: 2500, price: 9, discount: '-10%' },
+    { id: 'credit_5000', amount: 5000, price: 16, discount: '-20%' },
+    { id: 'credit_10000', amount: 10000, price: 24, discount: '-40%' },
   ];
 
   const currentOption = creditOptions.find(opt => opt.amount === selectedCredits) || creditOptions[0];
@@ -262,7 +262,12 @@ export default function HomePage() {
                     >
                       {option.amount}
                       {option.discount && (
-                        <span className={`absolute -top-2 -right-2 ${option.amount === 5000 ? 'bg-red-600' : option.amount === 2000 ? 'bg-orange-500' : 'bg-orange-500'} text-white text-[9px] px-2 py-0.5 rounded-full transform rotate-12 font-black shadow-lg`}>
+                        <span className={`absolute -top-2 -right-2 ${
+                          option.amount === 2500 ? 'bg-blue-500' : 
+                          option.amount === 5000 ? 'bg-cyan-500' : 
+                          option.amount === 10000 ? 'bg-purple-500' : 
+                          'bg-orange-500'
+                        } text-white text-[9px] px-2 py-0.5 rounded-full transform rotate-12 font-black shadow-lg`}>
                           {option.discount}
                         </span>
                       )}

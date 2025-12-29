@@ -21,45 +21,45 @@ PLANS = {
     "credit_500": {
         "id": "credit_500",
         "name": "500 Credits",
-        "price_eur": Decimal("1.05"),
+        "price_eur": Decimal("2.00"),
         "credits": 500,
-        "price_per_credit": Decimal("0.0021"),
+        "price_per_credit": Decimal("0.004"),
         "duration_days": 365,  # Кредиты не сгорают быстро
         "description": "Базовый пакет кредитов",
         "tribute_link": "https://tribute.to/your-bot?product=credit_500"  # Замените на реальную ссылку
     },
-    "credit_1000": {
-        "id": "credit_1000",
-        "name": "1000 Credits",
-        "price_eur": Decimal("1.68"),
-        "credits": 1000,
-        "price_per_credit": Decimal("0.0016"),
+    "credit_2500": {
+        "id": "credit_2500",
+        "name": "2500 Credits",
+        "price_eur": Decimal("9.00"),
+        "credits": 2500,
+        "price_per_credit": Decimal("0.0036"),
         "duration_days": 365,
-        "discount_percent": 20,
+        "discount_percent": 10,
         "description": "Популярный пакет кредитов",
-        "tribute_link": "https://tribute.to/your-bot?product=credit_1000"
-    },
-    "credit_2000": {
-        "id": "credit_2000",
-        "name": "2000 Credits",
-        "price_eur": Decimal("3.36"),
-        "credits": 2000,
-        "price_per_credit": Decimal("0.0016"),
-        "duration_days": 365,
-        "discount_percent": 20,
-        "description": "Выгодный пакет кредитов",
-        "tribute_link": "https://tribute.to/your-bot?product=credit_2000"
+        "tribute_link": "https://tribute.to/your-bot?product=credit_2500"
     },
     "credit_5000": {
         "id": "credit_5000",
         "name": "5000 Credits",
-        "price_eur": Decimal("6.30"),
+        "price_eur": Decimal("16.00"),
         "credits": 5000,
-        "price_per_credit": Decimal("0.0013"),
+        "price_per_credit": Decimal("0.0032"),
+        "duration_days": 365,
+        "discount_percent": 20,
+        "description": "Выгодный пакет кредитов",
+        "tribute_link": "https://tribute.to/your-bot?product=credit_5000"
+    },
+    "credit_10000": {
+        "id": "credit_10000",
+        "name": "10000 Credits",
+        "price_eur": Decimal("24.00"),
+        "credits": 10000,
+        "price_per_credit": Decimal("0.0024"),
         "duration_days": 365,
         "discount_percent": 40,
         "description": "Максимальная выгода",
-        "tribute_link": "https://tribute.to/your-bot?product=credit_5000"
+        "tribute_link": "https://tribute.to/your-bot?product=credit_10000"
     }
 }
 

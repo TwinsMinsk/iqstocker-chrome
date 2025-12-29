@@ -9,9 +9,9 @@ import { billingAPI, type Plan } from '@/services/api/billing';
 // Дефолтные планы на случай если API не вернет данные
 const DEFAULT_PLANS: Plan[] = [
   { id: 'credit_500', name: '500 Credits', price_eur: 2, credits: 500, duration_days: 365, description: '' },
-  { id: 'credit_1000', name: '1000 Credits', price_eur: 3.6, credits: 1000, duration_days: 365, description: '' },
-  { id: 'credit_2000', name: '2000 Credits', price_eur: 6.4, credits: 2000, duration_days: 365, description: '' },
-  { id: 'credit_5000', name: '5000 Credits', price_eur: 14, credits: 5000, duration_days: 365, description: '' },
+  { id: 'credit_2500', name: '2500 Credits', price_eur: 9, credits: 2500, duration_days: 365, description: '' },
+  { id: 'credit_5000', name: '5000 Credits', price_eur: 16, credits: 5000, duration_days: 365, description: '' },
+  { id: 'credit_10000', name: '10000 Credits', price_eur: 24, credits: 10000, duration_days: 365, description: '' },
 ];
 
 export default function BillingPage() {
@@ -129,19 +129,19 @@ export default function BillingPage() {
                   }`}
                 >
                   {plan.credits}
-                  {plan.id === 'credit_1000' && (
-                    <span className="absolute -top-3 -right-3 bg-[#ff6b00] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                  {plan.id === 'credit_2500' && (
+                    <span className="absolute -top-3 -right-3 bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
                       -10%
                     </span>
                   )}
-                  {plan.id === 'credit_2000' && (
-                    <span className="absolute -top-3 -right-3 bg-[#ff6b00] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                  {plan.id === 'credit_5000' && (
+                    <span className="absolute -top-3 -right-3 bg-cyan-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
                       -20%
                     </span>
                   )}
-                  {plan.id === 'credit_5000' && (
-                    <span className="absolute -top-3 -right-3 bg-[#ff0000] text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
-                      -30%
+                  {plan.id === 'credit_10000' && (
+                    <span className="absolute -top-3 -right-3 bg-purple-500 text-white text-[10px] px-2.5 py-1 rounded-full transform rotate-12 font-black shadow-lg">
+                      -40%
                     </span>
                   )}
                 </button>
