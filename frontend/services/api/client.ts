@@ -3,12 +3,45 @@
  */
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-// Получаем API URL из переменных окружения
-// В Next.js NEXT_PUBLIC_* переменные встраиваются на этапе сборки
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
-  (process.env.NODE_ENV === 'production' 
-    ? '' // В продакшене не используем localhost как фолбек
-    : 'http://localhost:8000/api/v1');
+function normalizeApiBaseUrl(raw?: string): string {
+  // В Next.js NEXT_PUBLIC_* переменные встраиваются на этапе сборки
+  const val = (raw ?? '').trim().replace(/\/+$/, '');
+
+  // Dev fallback (локальная разработка)
+  if (!val) {
+    return process.env.NODE_ENV === 'production'
+      ? '' // в production не гадаем адрес бэка
+      : 'http://localhost:8000/api/v1';
+  }
+
+  // Relative baseURL (например "/api/v1" через reverse-proxy)
+  if (val.startsWith('/')) {
+    if (val === '/api/v1' || val.startsWith('/api/v1/')) return val.replace(/\/+$/, '');
+    if (val === '/api' || val.startsWith('/api/')) return `${val.replace(/\/+$/, '')}/v1`;
+    // Если это просто "/backend" — оставляем как есть (пользователь явно так настроил).
+    return val;
+  }
+
+  // Absolute URL
+  try {
+    const url = new URL(val);
+    const path = url.pathname.replace(/\/+$/, '');
+    if (path === '/api/v1' || path.startsWith('/api/v1/')) return url.toString().replace(/\/+$/, '');
+    if (path === '/api' || path.startsWith('/api/')) {
+      url.pathname = `${path}/v1`;
+      return url.toString().replace(/\/+$/, '');
+    }
+    // Самый частый кейс на Railway: дают "https://backend-xxx.up.railway.app"
+    // В таком случае API живёт на "/api/v1".
+    url.pathname = `${path === '/' ? '' : path}/api/v1`;
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    // Если передали невалидную строку — используем как есть.
+    return val;
+  }
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 // Проверка критических ошибок конфигурации
 if (typeof window !== 'undefined') {

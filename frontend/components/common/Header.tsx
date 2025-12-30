@@ -58,6 +58,14 @@ export function Header() {
           >
             {showAuthContent && isAuthenticated ? (
               <div className="flex items-center gap-6">
+                {user?.is_admin && (
+                  <Link
+                    href="/admin"
+                    className="hidden sm:block text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors border border-red-500/20 px-3 py-1.5 rounded-lg bg-red-500/5"
+                  >
+                    Админ-панель
+                  </Link>
+                )}
                 <Link
                   href="/dashboard"
                   className="hidden sm:block text-xs font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"

@@ -177,18 +177,33 @@ class ReferralService:
     def get_referral_stats(db: Session, user_id: str) -> dict:
         """Получить статистику рефералов для пользователя"""
         from sqlalchemy import func
+        from app.core.config import settings
+        
+        # Преобразуем user_id в правильный тип (UUID или String)
+        # В зависимости от типа БД
+        if settings.USE_SQLITE:
+            # Для SQLite user_id уже строка
+            user_id_filter = user_id
+        else:
+            # Для PostgreSQL нужно преобразовать строку в UUID
+            from uuid import UUID
+            try:
+                user_id_filter = UUID(user_id) if isinstance(user_id, str) else user_id
+            except (ValueError, AttributeError):
+                # Если не удалось преобразовать, используем как есть
+                user_id_filter = user_id
         
         # Количество приглашённых
-        invited_count = db.query(User).filter(User.referred_by_id == user_id).count()
+        invited_count = db.query(User).filter(User.referred_by_id == user_id_filter).count()
         
         # Сколько кредитов заработано на рефералах
         total_earned = db.query(func.coalesce(func.sum(CreditTransaction.amount), 0)).filter(
-            CreditTransaction.user_id == user_id,
+            CreditTransaction.user_id == user_id_filter,
             CreditTransaction.type == CreditTransactionType.REFERRAL_REWARD.value
         ).scalar()
         
         # Получаем реферальный код
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.id == user_id_filter).first()
         referral_code = user.referral_code if user else None
         
         return {

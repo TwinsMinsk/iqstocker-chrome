@@ -5,7 +5,9 @@ const nextConfig = {
   // Включаем standalone только для production сборки
   ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    // Next.js ожидает string. В CI/preview переменная может быть не задана — даём пустую строку.
+    // На runtime код берёт process.env.NEXT_PUBLIC_API_URL, а в api client мы дополнительно нормализуем URL.
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
   },
   // Production оптимизации
   compress: true,

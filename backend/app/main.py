@@ -4,6 +4,7 @@ FastAPI Application Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
@@ -33,6 +34,10 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# Добавляем ProxyHeadersMiddleware для корректной работы за прокси (Railway)
+# Это позволяет FastAPI правильно определять https и IP адрес клиента
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # TrustedHostMiddleware - на Railway может вызывать проблемы с 400 Bad Request
 # если HOST заголовок не совпадает. Разрешаем все хосты, если в настройках "*"

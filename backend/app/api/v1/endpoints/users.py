@@ -204,10 +204,26 @@ async def get_my_referral_stats(
     - Количество приглашённых пользователей
     - Общее количество заработанных кредитов
     """
-    # Убеждаемся что у пользователя есть referral_code (для старых пользователей)
-    if not user.referral_code:
-        referral_service.assign_referral_code(db, user)
-        db.refresh(user)
-    
-    stats = referral_service.get_referral_stats(db, str(user.id))
-    return ReferralStatsResponse(**stats)
+    try:
+        # Убеждаемся что у пользователя есть referral_code (для старых пользователей)
+        if not user.referral_code:
+            try:
+                referral_service.assign_referral_code(db, user)
+                db.refresh(user)
+            except Exception as e:
+                # Если не удалось сгенерировать код, продолжаем без него
+                # (статистика всё равно будет работать)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to assign referral code to user {user.id}: {e}")
+        
+        stats = referral_service.get_referral_stats(db, str(user.id))
+        return ReferralStatsResponse(**stats)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_my_referral_stats for user {user.id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch referral stats: {str(e)}"
+        )
