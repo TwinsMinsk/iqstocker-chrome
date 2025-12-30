@@ -7,7 +7,7 @@ export interface AdminUser {
   id: string;
   email: string;
   balance: number;
-  subscription_tier: string;
+  referrals_count: number;
   created_at: string;
   last_active: string | null;
   is_blocked: boolean;

@@ -91,15 +91,15 @@ class AdminService:
             ).order_by(desc(ExtensionLog.timestamp)).first()
             
             balance = subscription.credits_balance if subscription else 0
-            subscription_tier = subscription.plan_id if subscription else "free"
             last_active = last_log.timestamp if last_log else None
             is_blocked = not user.is_active
+            referrals_count = len(user.referred_users)
             
             user_items.append(AdminUserItem(
                 id=str(user.id),
                 email=user.email,
                 balance=balance,
-                subscription_tier=subscription_tier,
+                referrals_count=referrals_count,
                 created_at=user.created_at,
                 last_active=last_active,
                 is_blocked=is_blocked,

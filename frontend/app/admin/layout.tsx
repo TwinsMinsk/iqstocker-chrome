@@ -10,16 +10,21 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user, fetchUser, isLoading } = useAuthStore();
+  const { isAuthenticated, user, fetchUser, isLoading, isHydrated } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   // Если пользователь уже загружен, сразу помечаем как инициализированный
-  const [isInitialized, setIsInitialized] = useState(!!user);
+  const [isInitialized, setIsInitialized] = useState(false);
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
-    // Если не аутентифицирован, редиректим на логин
-    if (!isAuthenticated) {
+    // Ждем окончания гидратации
+    if (!isHydrated) return;
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+    // Если не аутентифицирован и нет токена в localStorage, редиректим на логин
+    if (!isAuthenticated && !token) {
       router.push('/login');
       return;
     }
@@ -37,7 +42,7 @@ export default function AdminLayout({
         setIsInitialized(true);
       });
     }
-  }, [isAuthenticated, router, fetchUser, user, isLoading]);
+  }, [isAuthenticated, router, fetchUser, user, isLoading, isHydrated]);
 
   // Редирект на dashboard, если нет прав администратора (только после загрузки)
   useEffect(() => {
@@ -47,7 +52,7 @@ export default function AdminLayout({
   }, [isInitialized, user, router]);
 
   // Показываем спиннер во время загрузки (только если пользователь еще не загружен)
-  if ((isLoading || !isInitialized) && !user) {
+  if (!isHydrated || ((isLoading || !isInitialized) && !user)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

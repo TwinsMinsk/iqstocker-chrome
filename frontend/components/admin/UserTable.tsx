@@ -99,7 +99,7 @@ export function UserTable({
                 Баланс
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Тариф
+                Рефералы
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Статус
@@ -149,7 +149,7 @@ export function UserTable({
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900 capitalize">{user.subscription_tier}</span>
+                  <span className="text-sm text-gray-900">{user.referrals_count}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {editingUser === user.id ? (

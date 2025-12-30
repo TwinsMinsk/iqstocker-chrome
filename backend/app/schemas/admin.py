@@ -11,7 +11,7 @@ class AdminUserItem(BaseModel):
     id: str
     email: str
     balance: int = Field(..., description="Баланс кредитов")
-    subscription_tier: str = Field(..., description="Текущий тариф")
+    referrals_count: int = Field(default=0, description="Количество рефералов")
     created_at: datetime
     last_active: Optional[datetime] = None
     is_blocked: bool = Field(default=False, description="Заблокирован ли пользователь")
