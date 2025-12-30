@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { billingAPI, type Plan } from '@/services/api/billing';
-import PromoCodeInput from '@/components/dashboard/PromoCodeInput';
 
 // Дефолтные планы на случай если API не вернет данные
 const DEFAULT_PLANS: Plan[] = [
@@ -198,9 +197,6 @@ export default function BillingPage() {
           </Link>
         </div>
       </div>
-
-      {/* Промокод */}
-      <PromoCodeInput />
     </div>
   );
 }

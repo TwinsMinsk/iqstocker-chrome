@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { BalanceCard } from '@/components/dashboard/BalanceCard';
 import { LicenseKeyCard } from '@/components/dashboard/LicenseKeyCard';
 import { ExtensionDownload } from '@/components/dashboard/ExtensionDownload';
+import PromoCodeInput from '@/components/dashboard/PromoCodeInput';
 
 export default function DashboardPage() {
   const { isAuthenticated, fetchUser, user, accessToken } = useAuthStore();
@@ -68,8 +69,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-1 gap-8">
+        <div className="grid lg:grid-cols-1 gap-8 mb-8">
           <ExtensionDownload />
+        </div>
+
+        <div className="mb-16">
+          <PromoCodeInput />
         </div>
         
         <footer className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-white/20 uppercase tracking-[0.2em]">
