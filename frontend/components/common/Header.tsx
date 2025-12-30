@@ -61,26 +61,16 @@ export function Header() {
                 {user?.is_admin && (
                   <Link
                     href="/admin"
-                    className="hidden sm:block text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors border border-red-500/20 px-3 py-1.5 rounded-lg bg-red-500/5"
+                    className="hidden sm:block text-[10px] font-black text-white hover:text-red-100 uppercase tracking-widest transition-all border border-red-500/40 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600/80 to-red-500/80 hover:from-red-600 hover:to-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_20px_rgba(239,68,68,0.5)]"
                   >
                     Админ-панель
                   </Link>
                 )}
                 <Link
                   href="/dashboard"
-                  className="hidden sm:block text-xs font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"
+                  className="hidden sm:block text-xs font-black text-white hover:text-indigo-100 uppercase tracking-widest transition-all border border-indigo-500/40 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600/80 to-indigo-500/80 hover:from-indigo-600 hover:to-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]"
                 >
                   Личный кабинет
-                </Link>
-                <Link
-                  href="/dashboard/referral"
-                  className="hidden sm:block text-xs font-black text-green-400 hover:text-green-300 uppercase tracking-widest transition-colors flex items-center gap-1"
-                  title="Реферальная программа"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Реферальная программа
                 </Link>
                 <button
                   onClick={handleLogout}
