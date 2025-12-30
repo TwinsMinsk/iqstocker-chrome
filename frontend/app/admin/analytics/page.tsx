@@ -248,30 +248,25 @@ export default function AdminAnalyticsPage() {
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-xs text-blue-600 font-medium mb-1">Конверсия в платеж</p>
                 <p className="text-2xl font-bold text-blue-900">
-                  {stats.active_users_period > 0
-                    ? ((stats.total_unique_paying_users / stats.active_users_period) * 100).toFixed(1)
-                    : 0}
-                  %
+                  {formatPercent(stats.paying_users_percentage)}
                 </p>
-                <p className="text-xs text-blue-600 mt-1">Платящих / Активных</p>
+                <p className="text-xs text-blue-600 mt-1">Платящих от всех пользователей</p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
-                <p className="text-xs text-green-600 font-medium mb-1">Повторных покупок</p>
+                <p className="text-xs text-green-600 font-medium mb-1">Retention Rate</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {stats.total_unique_paying_users > 0
-                    ? (stats.total_transactions / stats.total_unique_paying_users).toFixed(1)
-                    : 0}
+                  {formatPercent(stats.retention_rate)}
                 </p>
-                <p className="text-xs text-green-600 mt-1">Транзакций / Платящих</p>
+                <p className="text-xs text-green-600 mt-1">Повторные покупки (30 дней)</p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg">
                 <p className="text-xs text-purple-600 font-medium mb-1">Генераций на активного</p>
                 <p className="text-2xl font-bold text-purple-900">
-                  {stats.active_users_period > 0
-                    ? formatNumber(Math.round(stats.total_generations / stats.active_users_period))
+                  {stats.mau_count > 0
+                    ? formatNumber(Math.round(stats.total_generations / stats.mau_count))
                     : 0}
                 </p>
-                <p className="text-xs text-purple-600 mt-1">Генераций / Активных</p>
+                <p className="text-xs text-purple-600 mt-1">Генераций / MAU</p>
               </div>
             </div>
           </div>
