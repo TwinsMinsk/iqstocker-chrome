@@ -11,8 +11,8 @@ export default function AdminPage() {
   });
 
   const { data: logsData, error: logsError } = useQuery({
-    queryKey: ['admin-logs', undefined, undefined, undefined, 10],
-    queryFn: () => adminAPI.getLogs({ limit: 10 }),
+    queryKey: ['admin-logs', undefined, undefined, undefined, 20],
+    queryFn: () => adminAPI.getLogs({ limit: 20 }),
   });
 
   const hasError = Boolean(usersError || logsError);
@@ -90,16 +90,10 @@ export default function AdminPage() {
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Последние логи</h3>
-            <Link
-              href="/admin/logs"
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Все →
-            </Link>
+            <h3 className="text-lg font-semibold">Последние логи (20 записей)</h3>
           </div>
           <div className="space-y-3">
-            {logsData?.logs.slice(0, 5).map((log) => (
+            {logsData?.logs.map((log) => (
               <div key={log.id} className="py-2 border-b border-gray-100 last:border-0">
                 <div className="flex items-center justify-between">
                   <div>

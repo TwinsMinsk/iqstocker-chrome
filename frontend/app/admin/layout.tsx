@@ -105,16 +105,6 @@ export default function AdminLayout({
               Пользователи
             </Link>
             <Link
-              href="/admin/logs"
-              className={`border-b-2 py-4 px-1 text-sm font-medium transition ${
-                isActive('/admin/logs')
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Логи
-            </Link>
-            <Link
               href="/admin/promocodes"
               className={`border-b-2 py-4 px-1 text-sm font-medium transition ${
                 isActive('/admin/promocodes')
