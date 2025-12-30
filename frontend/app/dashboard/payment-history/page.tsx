@@ -9,12 +9,11 @@ import api from '@/services/api/client';
 // Интерфейс для транзакции
 interface Transaction {
   id: string;
-  amount_eur: number;
-  credits_amount: number;
+  amount: number;
+  credits: number;
   status: string;
-  payment_method: string;
   created_at: string;
-  plan_name?: string;
+  plan_id?: string;
 }
 
 export default function PaymentHistoryPage() {
@@ -34,43 +33,9 @@ export default function PaymentHistoryPage() {
 
   const loadTransactions = async () => {
     try {
-      // TODO: Подключить реальный API endpoint
-      // const response = await api.get('/transactions');
-      // setTransactions(response.data.transactions);
-      
-      // Mock data для демонстрации
-      setTimeout(() => {
-        setTransactions([
-          {
-            id: '1',
-            amount_eur: 10,
-            credits_amount: 5000,
-            status: 'completed',
-            payment_method: 'telegram_tribute',
-            created_at: '2025-12-20T10:30:00Z',
-            plan_name: 'STANDARD',
-          },
-          {
-            id: '2',
-            amount_eur: 3,
-            credits_amount: 1000,
-            status: 'completed',
-            payment_method: 'telegram_tribute',
-            created_at: '2025-12-15T14:20:00Z',
-            plan_name: 'BASIC',
-          },
-          {
-            id: '3',
-            amount_eur: 17,
-            credits_amount: 10000,
-            status: 'pending',
-            payment_method: 'telegram_tribute',
-            created_at: '2025-12-23T09:15:00Z',
-            plan_name: 'PRO',
-          },
-        ]);
-        setLoading(false);
-      }, 500);
+      const response = await api.get('/subscriptions/transactions');
+      setTransactions(response.data.transactions);
+      setLoading(false);
     } catch (error) {
       console.error('Failed to load transactions:', error);
       setLoading(false);
@@ -166,13 +131,19 @@ export default function PaymentHistoryPage() {
                       {formatDate(transaction.created_at)}
                     </td>
                     <td className="px-8 py-6">
-                      <span className="text-xs font-black text-white uppercase tracking-widest">{transaction.plan_name === 'STANDARD' ? 'СТАНДАРТНЫЙ' : transaction.plan_name === 'BASIC' ? 'БАЗОВЫЙ' : transaction.plan_name === 'PRO' ? 'ПРО' : transaction.plan_name}</span>
+                      <span className="text-xs font-black text-white uppercase tracking-widest">
+                        {transaction.plan_id === 'credit_5000' ? 'СТАНДАРТНЫЙ' : 
+                         transaction.plan_id === 'credit_2500' ? 'БАЗОВЫЙ' : 
+                         transaction.plan_id === 'credit_10000' ? 'ПРО' : 
+                         transaction.plan_id === 'credit_500' ? 'СТАРТ' :
+                         transaction.plan_id?.replace('credit_', '') || 'Custom'}
+                      </span>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="text-xs font-black text-indigo-400">+{transaction.credits_amount.toLocaleString()}</span>
+                      <span className="text-xs font-black text-indigo-400">+{transaction.credits.toLocaleString()}</span>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="text-xs font-black text-white">€{transaction.amount_eur.toFixed(2)}</span>
+                      <span className="text-xs font-black text-white">€{Number(transaction.amount).toFixed(2)}</span>
                     </td>
                     <td className="px-8 py-6">
                       {getStatusBadge(transaction.status)}
@@ -190,10 +161,7 @@ export default function PaymentHistoryPage() {
 
       {/* Информационная панель */}
       <div className="mt-12 p-8 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl flex items-center justify-between">
-        <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.2em]">
-          Поддержка: help@iqstocker.auto
-        </p>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>
            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Журнал активен</span>
         </div>

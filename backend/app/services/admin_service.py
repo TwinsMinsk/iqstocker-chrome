@@ -300,10 +300,71 @@ class AdminService:
                 timestamp=log.timestamp
             ))
         
-        return AdminLogListResponse(
-            total=total,
-            logs=log_items
-        )
+            return AdminLogListResponse(
+                total=total,
+                logs=log_items
+            )
+    
+    @staticmethod
+    def reset_user_password(
+        db: Session,
+        user_id: str,
+        new_password: str,
+        admin_actor_id: Optional[str] = None
+    ) -> Tuple[Optional[dict], Optional[str]]:
+        """
+        Сбросить пароль пользователя (админ)
+        
+        Args:
+            db: Database session
+            user_id: ID пользователя
+            new_password: Новый пароль
+            admin_actor_id: ID админа, выполняющего операцию
+        
+        Returns:
+            Tuple[dict с результатом, error_message]
+        """
+        from app.core.security import get_password_hash
+        from app.core.config import settings
+        
+        # Преобразуем user_id в правильный тип
+        user_id_typed = user_id
+        if not settings.USE_SQLITE:
+            from uuid import UUID as UUIDType
+            try:
+                user_id_typed = UUIDType(user_id)
+            except ValueError:
+                return None, "Invalid user ID format"
+        
+        user = db.query(User).filter(User.id == user_id_typed).first()
+        if not user:
+            return None, "User not found"
+        
+        try:
+            # Проверка длины пароля в байтах (bcrypt ограничение: 72 байта)
+            password_bytes = new_password.encode('utf-8')
+            if len(password_bytes) > 72:
+                return None, "Пароль не может быть длиннее 72 байт"
+            
+            # Хешируем новый пароль
+            user.password_hash = get_password_hash(new_password)
+            db.commit()
+            db.refresh(user)
+            
+            actor = admin_actor_id or "unknown_admin"
+            logger.info(f"Admin {actor} reset password for user: {user.email} (id: {user_id})")
+            
+            return {
+                "id": str(user.id),
+                "email": user.email,
+                "success": True,
+                "message": "Password reset successfully"
+            }, None
+            
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error resetting password: {e}")
+            return None, f"Failed to reset password: {str(e)}"
 
 
 # Глобальный экземпляр

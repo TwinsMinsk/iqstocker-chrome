@@ -283,48 +283,6 @@ export default function AdminAnalyticsPage() {
               </div>
             </div>
           </div>
-
-          {/* Простая визуализация (без графиков) */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Эффективность использования</h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-600 font-medium mb-1">ARPU (Monthly)</p>
-                <p className="text-2xl font-bold text-blue-900">
-                  {formatCurrency(
-                    stats.mau_count > 0 
-                      ? stats.total_revenue_eur / stats.mau_count 
-                      : 0
-                  )}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">Средний доход на активного (MAU)</p>
-              </div>
-              <div className="p-4 bg-green-50 rounded-lg">
-                <p className="text-xs text-green-600 font-medium mb-1">Доход с генерации</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {new Intl.NumberFormat('ru-RU', {
-                    style: 'currency',
-                    currency: 'EUR',
-                    minimumFractionDigits: 3,
-                  }).format(
-                    stats.total_generations > 0 
-                      ? stats.total_revenue_eur / stats.total_generations 
-                      : 0
-                  )}
-                </p>
-                <p className="text-xs text-green-600 mt-1">Выручка / Всего генераций</p>
-              </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <p className="text-xs text-purple-600 font-medium mb-1">Генераций на активного</p>
-                <p className="text-2xl font-bold text-purple-900">
-                  {stats.mau_count > 0
-                    ? formatNumber(Math.round(stats.total_generations / stats.mau_count))
-                    : 0}
-                </p>
-                <p className="text-xs text-purple-600 mt-1">Генераций / MAU</p>
-              </div>
-            </div>
-          </div>
         </>
       ) : (
         <div className="bg-white rounded-lg shadow-lg p-8 text-center text-gray-500">

@@ -79,7 +79,7 @@ class TransactionResponse(BaseModel):
     currency: str = "EUR"
     credits: int
     status: str  # 'pending', 'completed', 'failed'
-    plan: Optional[str] = None
+    plan_id: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
     

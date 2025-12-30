@@ -18,6 +18,8 @@ from app.schemas.admin import (
     AdminUserUpdateRequest,
     AdminUserUpdateResponse,
     AdminLogListResponse,
+    AdminResetPasswordRequest,
+    AdminResetPasswordResponse,
 )
 from app.services.promo_service import promo_service
 from app.services.referral_service import referral_service
@@ -85,6 +87,34 @@ async def update_user(
         )
     
     return result
+
+
+@router.post("/users/{user_id}/reset-password", response_model=AdminResetPasswordResponse)
+async def reset_user_password(
+    user_id: str,
+    request: AdminResetPasswordRequest,
+    admin_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Сбросить пароль пользователя (только для админов)
+    
+    - **new_password**: Новый пароль (минимум 8 символов, максимум 72 байта)
+    """
+    result, error = admin_service.reset_user_password(
+        db=db,
+        user_id=user_id,
+        new_password=request.new_password,
+        admin_actor_id=str(admin_user.id),
+    )
+    
+    if error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    
+    return AdminResetPasswordResponse(**result)
 
 
 @router.get("/logs", response_model=AdminLogListResponse)

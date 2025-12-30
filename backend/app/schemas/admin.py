@@ -73,3 +73,15 @@ class AdminLogListResponse(BaseModel):
     total: int
     logs: List[AdminLogItem]
 
+
+class AdminResetPasswordRequest(BaseModel):
+    """Запрос на сброс пароля пользователя (админ)"""
+    new_password: str = Field(..., min_length=8, max_length=72, description="Новый пароль (минимум 8 символов)")
+
+
+class AdminResetPasswordResponse(BaseModel):
+    """Ответ после сброса пароля"""
+    id: str
+    email: str
+    success: bool
+    message: str

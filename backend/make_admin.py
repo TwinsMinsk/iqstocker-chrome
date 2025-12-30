@@ -7,7 +7,7 @@ from app.db.session import SessionLocal
 from app.models.user import User
 
 # 👇 ВПИШИТЕ СЮДА ВАШ EMAIL
-TARGET_EMAIL = "twins@gmail.com" 
+TARGET_EMAIL = "iqstocker@gmail.com" 
 
 def make_user_admin():
     db = SessionLocal()
