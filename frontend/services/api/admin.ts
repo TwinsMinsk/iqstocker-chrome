@@ -298,9 +298,10 @@ export const adminAPI = {
   /**
    * Получить статистику дашборда
    */
-  async getDashboardStats(days = 30): Promise<DashboardStats> {
+  async getDashboardStats(params?: { days?: number; start_date?: string; end_date?: string } | number): Promise<DashboardStats> {
+    const queryParams = typeof params === 'number' ? { days: params } : params;
     const response = await api.get<DashboardStats>('/admin/analytics/dashboard', {
-      params: { days },
+      params: queryParams,
     });
     return response.data;
   },

@@ -296,7 +296,9 @@ class DashboardStatsResponse(BaseModel):
 
 @router.get("/analytics/dashboard", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
-    days: int = Query(30, ge=1, le=365),
+    days: Optional[int] = Query(None, ge=1, le=365),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -307,8 +309,17 @@ async def get_dashboard_stats(
     - Быстрые метрики из DailyAnalytics
     - Сложные метрики (WAU/MAU/LTV/Retention) считаются через AnalyticsService
     """
-    end_date = date.today()
-    start_date = end_date - timedelta(days=days)
+    if start_date and end_date:
+        # Испольузем переданный период
+        pass
+    elif days:
+        # Используем days
+        end_date = date.today()
+        start_date = end_date - timedelta(days=days)
+    else:
+        # По умолчанию 30 дней
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
     
     # Получаем все метрики через AnalyticsService
     stats = analytics_service.get_comprehensive_stats(db, start_date, end_date)

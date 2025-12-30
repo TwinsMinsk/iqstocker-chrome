@@ -6,12 +6,34 @@ import { adminAPI, type DashboardStats } from '@/services/api/admin';
 
 export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30);
+  const [isCustomDate, setIsCustomDate] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0],
+  });
   const [activeMetric, setActiveMetric] = useState<'dau' | 'wau' | 'mau'>('mau'); // Переключатель DAU/WAU/MAU
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-analytics', days],
-    queryFn: () => adminAPI.getDashboardStats(days),
+    queryKey: ['admin-analytics', days, isCustomDate, dateRange],
+    queryFn: () => {
+      if (isCustomDate) {
+        return adminAPI.getDashboardStats({
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+        });
+      }
+      return adminAPI.getDashboardStats(days);
+    },
   });
+
+  const handlePeriodChange = (value: string) => {
+    if (value === 'custom') {
+      setIsCustomDate(true);
+    } else {
+      setIsCustomDate(false);
+      setDays(Number(value));
+    }
+  };
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('ru-RU').format(num);
@@ -31,21 +53,42 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold">Аналитика</h2>
-        <div className="flex items-center gap-4">
-          <label className="text-sm text-gray-700">Период:</label>
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value={7}>7 дней</option>
-            <option value={30}>30 дней</option>
-            <option value={90}>90 дней</option>
-            <option value={180}>180 дней</option>
-            <option value={365}>365 дней</option>
-          </select>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-700">Период:</label>
+            <select
+              value={isCustomDate ? 'custom' : days}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={7}>7 дней</option>
+              <option value={30}>30 дней</option>
+              <option value={90}>90 дней</option>
+              <option value={180}>180 дней</option>
+              <option value={365}>365 дней</option>
+              <option value="custom">Произвольный</option>
+            </select>
+          </div>
+          
+          {isCustomDate && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              />
+              <span className="text-gray-500">-</span>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -243,21 +286,33 @@ export default function AdminAnalyticsPage() {
 
           {/* Простая визуализация (без графиков) */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Сводка и конверсии</h3>
+            <h3 className="text-lg font-semibold mb-4">Эффективность использования</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-600 font-medium mb-1">Конверсия в платеж</p>
+                <p className="text-xs text-blue-600 font-medium mb-1">ARPU (Monthly)</p>
                 <p className="text-2xl font-bold text-blue-900">
-                  {formatPercent(stats.paying_users_percentage)}
+                  {formatCurrency(
+                    stats.mau_count > 0 
+                      ? stats.total_revenue_eur / stats.mau_count 
+                      : 0
+                  )}
                 </p>
-                <p className="text-xs text-blue-600 mt-1">Платящих от всех пользователей</p>
+                <p className="text-xs text-blue-600 mt-1">Средний доход на активного (MAU)</p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
-                <p className="text-xs text-green-600 font-medium mb-1">Retention Rate</p>
+                <p className="text-xs text-green-600 font-medium mb-1">Доход с генерации</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {formatPercent(stats.retention_rate)}
+                  {new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: 'EUR',
+                    minimumFractionDigits: 3,
+                  }).format(
+                    stats.total_generations > 0 
+                      ? stats.total_revenue_eur / stats.total_generations 
+                      : 0
+                  )}
                 </p>
-                <p className="text-xs text-green-600 mt-1">Повторные покупки (30 дней)</p>
+                <p className="text-xs text-green-600 mt-1">Выручка / Всего генераций</p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg">
                 <p className="text-xs text-purple-600 font-medium mb-1">Генераций на активного</p>

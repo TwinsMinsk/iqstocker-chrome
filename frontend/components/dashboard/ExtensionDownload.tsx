@@ -20,7 +20,9 @@ export function ExtensionDownload() {
 
     (async () => {
       try {
-        const res = await fetch('/api/extensions/latest', { 
+        // Запрашиваем JSON напрямую как статический файл
+        // Это надежнее, чем читать файл на сервере через API route в Docker/Standalone окружении
+        const res = await fetch('/downloads/extension/latest.json', { 
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
