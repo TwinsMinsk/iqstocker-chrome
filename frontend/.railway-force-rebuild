@@ -1,0 +1,6 @@
+# Force rebuild timestamp
+2025-12-30T20:00:00Z
+
+# This file forces Railway to rebuild the frontend service
+# by changing the build context
+
