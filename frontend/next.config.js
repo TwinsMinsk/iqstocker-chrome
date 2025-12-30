@@ -4,6 +4,10 @@ const nextConfig = {
   swcMinify: true,
   // Включаем standalone только для production сборки
   ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
+  // Отключаем кеш билда для гарантии свежей сборки всех маршрутов
+  generateBuildId: async () => {
+    return `build-${Date.now()}`
+  },
   env: {
     // Next.js ожидает string. В CI/preview переменная может быть не задана — даём пустую строку.
     // На runtime код берёт process.env.NEXT_PUBLIC_API_URL, а в api client мы дополнительно нормализуем URL.

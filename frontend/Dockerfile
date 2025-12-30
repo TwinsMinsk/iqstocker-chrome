@@ -23,6 +23,8 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED 1
 # Гарантируем, что папка public существует (на случай если она пустая)
 RUN mkdir -p ./public
+# Очищаем любой возможный кеш Next.js перед сборкой
+RUN rm -rf .next || true
 RUN npm run build
 
 # Stage 3: Runner
