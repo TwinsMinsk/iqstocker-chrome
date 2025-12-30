@@ -25,9 +25,18 @@ export default function ReferralPage() {
     try {
       setLoading(true);
       const data = await usersAPI.getReferralStats();
+      // Если referral_code отсутствует, это нормально для старых пользователей
+      // Backend автоматически сгенерирует его при следующем запросе
       setStats(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch referral stats', error);
+      // Показываем более понятное сообщение об ошибке
+      if (error.response?.status === 404) {
+        console.error('Referral endpoint not found. Make sure backend is deployed with latest changes.');
+      } else if (error.response?.status === 401) {
+        // Пользователь не аутентифицирован - редирект уже обработан в useEffect
+        router.push('/login');
+      }
     } finally {
       setLoading(false);
     }
@@ -68,7 +77,10 @@ export default function ReferralPage() {
     );
   }
 
-  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${stats.referral_code}`;
+  // Если referral_code отсутствует, показываем сообщение о генерации
+  const referralLink = stats.referral_code 
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${stats.referral_code}`
+    : '';
 
   return (
     <div className="min-h-screen pt-12 pb-20">
@@ -87,23 +99,37 @@ export default function ReferralPage() {
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 blur-3xl -z-10"></div>
 
           <h2 className="text-lg font-black uppercase tracking-[0.2em] text-white/80 mb-6">Ваша пригласительная ссылка</h2>
-          <div className="flex gap-3 mb-4">
-            <input
-              type="text"
-              readOnly
-              value={referralLink}
-              className="flex-1 px-6 py-4 bg-black/40 border border-white/20 rounded-2xl text-white/80 text-sm font-medium"
-            />
-            <button
-              onClick={copyLink}
-              className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-colors disabled:opacity-50"
-            >
-              {copied ? '✓ Скопировано' : 'Копировать'}
-            </button>
-          </div>
-          <p className="text-white/40 text-xs font-medium uppercase tracking-widest">
-            Поделитесь ссылкой с друзьями и получайте бонусные кредиты за их покупки!
-          </p>
+          {stats.referral_code ? (
+            <>
+              <div className="flex gap-3 mb-4">
+                <input
+                  type="text"
+                  readOnly
+                  value={referralLink}
+                  className="flex-1 px-6 py-4 bg-black/40 border border-white/20 rounded-2xl text-white/80 text-sm font-medium"
+                />
+                <button
+                  onClick={copyLink}
+                  className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-colors disabled:opacity-50"
+                >
+                  {copied ? '✓ Скопировано' : 'Копировать'}
+                </button>
+              </div>
+              <p className="text-white/40 text-xs font-medium uppercase tracking-widest">
+                Поделитесь ссылкой с друзьями и получайте бонусные кредиты за их покупки!
+              </p>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-white/60 text-sm mb-4">Реферальный код генерируется...</p>
+              <button
+                onClick={fetchStats}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-medium text-sm transition-colors"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Статистика */}

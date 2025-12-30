@@ -2,13 +2,17 @@
 
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  
+  // Показывать пункты меню только на главной странице
+  const isHomePage = pathname === '/';
 
   // Предотвращаем hydration mismatch - проверяем аутентификацию только на клиенте
   // На сервере mounted = false, поэтому всегда показываем "Войти"
@@ -40,11 +44,13 @@ export function Header() {
             <span className="text-xl font-black tracking-tighter text-white">СТОКЕР<span className="text-white/40">ГЕНЕРИНГ</span></span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-10">
-            <Link href="/#features" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Возможности</Link>
-            <Link href="/#pricing" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Тарифы</Link>
-            <Link href="/#faq" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">FAQ</Link>
-          </nav>
+          {isHomePage && (
+            <nav className="hidden md:flex items-center gap-10">
+              <Link href="/#features" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Возможности</Link>
+              <Link href="/#pricing" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Тарифы</Link>
+              <Link href="/#faq" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">FAQ</Link>
+            </nav>
+          )}
 
           <div 
             className="flex items-center gap-4"

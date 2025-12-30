@@ -200,9 +200,14 @@ async def get_my_referral_stats(
     Получить статистику рефералов для текущего пользователя
     
     Включает:
-    - Реферальный код пользователя
+    - Реферальный код пользователя (генерируется автоматически если отсутствует)
     - Количество приглашённых пользователей
     - Общее количество заработанных кредитов
     """
+    # Убеждаемся что у пользователя есть referral_code (для старых пользователей)
+    if not user.referral_code:
+        referral_service.assign_referral_code(db, user)
+        db.refresh(user)
+    
     stats = referral_service.get_referral_stats(db, str(user.id))
     return ReferralStatsResponse(**stats)
