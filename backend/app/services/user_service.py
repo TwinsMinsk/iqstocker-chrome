@@ -98,6 +98,7 @@ class UserService:
             id=str(user.id),
             email=user.email,
             is_admin=user.is_admin,
+            is_superuser=user.is_admin,  # is_superuser = is_admin для совместимости
             email_verified=user.email_verified,
             created_at=user.created_at,
             balance=balance_info,

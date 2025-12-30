@@ -23,6 +23,10 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.core.config import settings
 
+# ВАЖНО: импортируем app.models, чтобы Base.metadata включала ВСЕ таблицы (включая новые модели).
+# Иначе Base.metadata.create_all() может не создать некоторые таблицы в тестовой БД.
+import app.models  # noqa: F401
+
 # ВАЖНО: Импортируем app ПОСЛЕ настройки тестового окружения
 # чтобы избежать проблем с middleware при импорте
 from app.main import app

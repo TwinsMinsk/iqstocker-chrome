@@ -12,6 +12,7 @@ from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.core.config import settings
+from app.services.app_settings_service import app_settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -116,16 +117,16 @@ class BillingService:
         
         # Создать платеж в Tribute
         # Мы используем ссылки из настроек планов, добавляя user_id для отслеживания
-        tribute_url = plan.get("tribute_link", "https://tribute.to/your-bot")
+        tribute_url = app_settings_service.get_plan_payment_link(db, plan_id) or plan.get("tribute_link", "https://tribute.to/your-bot")
         
         # Если ссылка ведет на бота, добавляем start параметр с ID пользователя
         if "?" in tribute_url:
-            payment_url = f"{tribute_url}&user_id={user.id}"
+            payment_url = f"{tribute_url}&user_id={user.id}&plan_id={plan_id}"
         else:
             # Для чистых ссылок добавляем как первый параметр
             # ВНИМАНИЕ: Для Tribute.to это может потребовать ручного ввода ID пользователем
             # если не используется создание инвойса через API
-            payment_url = f"{tribute_url}?user_id={user.id}"
+            payment_url = f"{tribute_url}?user_id={user.id}&plan_id={plan_id}"
             
         transaction.payment_id = f"tribute_pending_{transaction.id}"
         db.commit()

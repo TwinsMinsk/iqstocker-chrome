@@ -6,6 +6,7 @@ import api from './client';
 export interface RegisterRequest {
   email: string;
   password: string;
+  referral_code?: string;
 }
 
 export interface LoginRequest {

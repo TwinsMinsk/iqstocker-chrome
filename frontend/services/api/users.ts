@@ -28,6 +28,7 @@ export interface UserProfileResponse {
   id: string;
   email: string;
   is_admin: boolean;
+  is_superuser?: boolean;  // Алиас для is_admin для совместимости
   email_verified: boolean;
   created_at: string;
   balance: BalanceInfo;
@@ -40,6 +41,12 @@ export interface LicenseKeyResponse {
   display: string;
   created_at: string;
   active: boolean;
+}
+
+export interface ReferralStatsResponse {
+  referral_code: string | null;
+  invited_count: number;
+  total_earned_credits: number;
 }
 
 export const usersAPI = {
@@ -64,6 +71,14 @@ export const usersAPI = {
    */
   async revokeLicenseKey(keyId: string): Promise<void> {
     await api.delete(`/users/me/license-keys/${keyId}`);
+  },
+
+  /**
+   * Получить статистику рефералов
+   */
+  async getReferralStats(): Promise<ReferralStatsResponse> {
+    const response = await api.get<ReferralStatsResponse>('/users/me/referral');
+    return response.data;
   },
 };
 

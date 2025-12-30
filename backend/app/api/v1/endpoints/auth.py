@@ -43,6 +43,7 @@ async def register(
         db=db,
         email=request.email,
         password=request.password,
+        referral_code=request.referral_code,
     )
     
     if error:

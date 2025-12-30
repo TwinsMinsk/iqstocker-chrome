@@ -2,13 +2,17 @@
 
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  
+  // Показывать пункты меню только на главной странице
+  const isHomePage = pathname === '/';
 
   // Предотвращаем hydration mismatch - проверяем аутентификацию только на клиенте
   // На сервере mounted = false, поэтому всегда показываем "Войти"
@@ -40,11 +44,13 @@ export function Header() {
             <span className="text-xl font-black tracking-tighter text-white">СТОКЕР<span className="text-white/40">ГЕНЕРИНГ</span></span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-10">
-            <Link href="/#features" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Возможности</Link>
-            <Link href="/#pricing" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Тарифы</Link>
-            <Link href="/#faq" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">FAQ</Link>
-          </nav>
+          {isHomePage && (
+            <nav className="hidden md:flex items-center gap-10">
+              <Link href="/#features" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Возможности</Link>
+              <Link href="/#pricing" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">Тарифы</Link>
+              <Link href="/#faq" className="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest">FAQ</Link>
+            </nav>
+          )}
 
           <div 
             className="flex items-center gap-4"
@@ -52,11 +58,29 @@ export function Header() {
           >
             {showAuthContent && isAuthenticated ? (
               <div className="flex items-center gap-6">
+                {user?.is_admin && (
+                  <Link
+                    href="/admin"
+                    className="hidden sm:block text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest transition-colors border border-red-500/20 px-3 py-1.5 rounded-lg bg-red-500/5"
+                  >
+                    Админ-панель
+                  </Link>
+                )}
                 <Link
                   href="/dashboard"
                   className="hidden sm:block text-xs font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"
                 >
                   Личный кабинет
+                </Link>
+                <Link
+                  href="/dashboard/referral"
+                  className="hidden sm:block text-xs font-black text-green-400 hover:text-green-300 uppercase tracking-widest transition-colors flex items-center gap-1"
+                  title="Реферальная программа"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Бонусы
                 </Link>
                 <button
                   onClick={handleLogout}

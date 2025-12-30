@@ -15,7 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Импортируем Base и models
 from app.db.base import Base
-from app.models import User, Subscription, LicenseKey, Transaction, ExtensionLog  # noqa
+from app.models import (
+    User, Subscription, LicenseKey, Transaction, ExtensionLog,
+    PromoCode, CreditTransaction, ReferralConfig, DailyAnalytics, AppSetting, TributeWebhookEvent  # noqa
+)
 from app.core.config import settings
 
 # this is the Alembic Config object, which provides

@@ -34,7 +34,8 @@ class AuthService:
         email: str,
         password: str,
         oauth_google_id: Optional[str] = None,
-        email_verified: bool = True  # По умолчанию email считается верифицированным (упрощенная регистрация)
+        email_verified: bool = True,  # По умолчанию email считается верифицированным (упрощенная регистрация)
+        referral_code: Optional[str] = None  # Реферальный код пригласившего
     ) -> Tuple[Optional[User], Optional[str]]:
         """
         Создать нового пользователя
@@ -114,6 +115,21 @@ class AuthService:
             
             db.commit()
             db.refresh(user)
+            
+            # === REFERRAL SYSTEM ===
+            from app.services.referral_service import referral_service
+            
+            # Назначаем реферальный код
+            try:
+                referral_service.assign_referral_code(db, user)
+            except Exception as e:
+                logger.error(f"Failed to assign referral code: {e}")
+                # Не блокируем регистрацию из-за ошибки генерации кода
+            
+            # Обрабатываем входящий реферал (если есть)
+            if referral_code:
+                referral_service.process_referral_on_register(db, user, referral_code)
+            # === END REFERRAL ===
             
             # Упрощенная регистрация: не отправляем письма верификации
             # Можно оставить только welcome email (опционально)
@@ -341,6 +357,7 @@ class AuthService:
             password="",  # OAuth не требует пароля
             oauth_google_id=google_id,
             email_verified=True,  # Google уже верифицировал email
+            referral_code=None  # OAuth пока не поддерживает рефералы
         )
         
         if error:

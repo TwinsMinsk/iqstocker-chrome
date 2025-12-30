@@ -1,20 +1,25 @@
 # Master Plan: Админ-панель, Аналитика, Промокоды и Реферальная система
 
-> **Версия:** 3.0 (Техническое Задание)  
+> **Версия:** 3.1 (Техническое Задание)  
 > **Дата:** 29.12.2025  
 > **Статус:** ✅ Готов к разработке  
-> **Стек:** FastAPI + SQLAlchemy 2.0 + Pydantic 2.5 | Next.js 14 (App Router) + TypeScript
+> **Стек:** FastAPI + SQLAlchemy 2.0 + Pydantic 2.5 | Next.js 14 (App Router) + TypeScript  
+> **Обновление:** Полная переработка раздела Аналитики (WAU/MAU, LTV, Retention)
 
 ---
 
 ## 1. Executive Summary
+
+> **⚠️ Примечание к версии 3.1:**  
+> Разделы **Промокоды** и **Реферальная система** остались без изменений (уже реализованы и работают).  
+> Полностью переработан только раздел **Аналитика** для удовлетворения требований заказчика (WAU/MAU, LTV, Retention, AOV, темп роста).
 
 Внедряем четыре ключевые функции для масштабирования бизнеса:
 
 | Компонент | Цель | Ключевая Метрика |
 |-----------|------|------------------|
 | **Админ-панель** | Ручное управление балансами, просмотр метрик | Снижение нагрузки на поддержку |
-| **Аналитика** | DAU/MAU, Revenue, Retention через предагрегацию | Скорость загрузки дашборда < 200ms |
+| **Аналитика** | Глубокая аналитика: DAU/WAU/MAU, LTV, Retention, AOV, темп роста | Скорость загрузки дашборда < 500ms (гибридный подход) |
 | **Промокоды** | Маркетинговые акции, бонусы | Конверсия активаций |
 | **Реферальная система** | Виральный рост через награды за оплаты | CAC, количество приглашенных |
 
@@ -206,7 +211,9 @@ class ReferralConfig(Base, TimestampMixin):
 
 ```python
 """
-DailyAnalytics Model - Предагрегированная статистика
+DailyAnalytics Model - Предагрегированная статистика для быстрых метрик
+Используется для DAU, Revenue, New Users (суммируемые метрики).
+WAU/MAU/LTV/Retention считаются "на лету" через SQL-запросы (см. AnalyticsService).
 """
 from sqlalchemy import Column, Date, Integer, Numeric
 
@@ -222,11 +229,11 @@ class DailyAnalytics(Base):
     
     # Пользователи
     new_users_count = Column(Integer, default=0, nullable=False)
-    active_users_dau = Column(Integer, default=0, nullable=False)  # Уникальные генерации
+    active_users_dau = Column(Integer, default=0, nullable=False)  # Уникальные пользователи с активностью за день
     
     # Финансы
     revenue_eur = Column(Numeric(12, 2), default=0, nullable=False)
-    paying_users_count = Column(Integer, default=0, nullable=False)
+    paying_users_count = Column(Integer, default=0, nullable=False)  # Уникальные плательщики за день
     
     # Активность
     total_generations = Column(Integer, default=0, nullable=False)
@@ -1167,17 +1174,40 @@ async def update_referral_config(
 # === ANALYTICS DASHBOARD ===
 
 from app.models.daily_analytics import DailyAnalytics
+from app.services.analytics_service import analytics_service
 from datetime import date, timedelta
 
 
 class DashboardStatsResponse(BaseModel):
+    # Период
     period_start: date
     period_end: date
-    total_users: int
-    new_users: int
-    total_revenue_eur: float
+    
+    # 1. Приток пользователей
+    total_users: int  # Общее количество за все время
+    new_users_month: int  # Новые пользователи за месяц
+    growth_rate: float  # Темп роста (% к прошлому месяцу)
+    
+    # 2. Активные пользователи
+    dau_count: int  # DAU (количество)
+    dau_percentage: float  # DAU (% от общего числа)
+    wau_count: int  # WAU (количество)
+    wau_percentage: float  # WAU (% от общего числа)
+    mau_count: int  # MAU (количество)
+    mau_percentage: float  # MAU (% от общего числа)
+    
+    # 3. Платящие пользователи
+    paying_users_month: int  # Количество платящих за месяц (уникальные)
+    paying_users_percentage: float  # % платящих от общего количества за месяц
+    
+    # 4. Доход и средний чек
+    total_revenue_eur: float  # Общая выручка за месяц
+    average_check: float  # AOV (Average Order Value) за месяц
+    ltv: float  # LTV (Lifetime Value) средний по платящим
+    retention_rate: float  # Retention платящих (30 дней): % тех, кто платил в месяце N-1 и купил снова в месяце N
+    
+    # Дополнительные метрики
     total_generations: int
-    dau_average: float
     new_referrals: int
 
 
@@ -1187,54 +1217,40 @@ async def get_dashboard_stats(
     admin_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Получить статистику дашборда за период"""
+    """
+    Получить полную статистику дашборда за период.
+    Использует гибридный подход: быстрые метрики из DailyAnalytics,
+    сложные метрики (WAU/MAU/LTV/Retention) считаются через AnalyticsService.
+    """
     from sqlalchemy import func
     from app.models.user import User as UserModel
     
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
     
-    # Агрегируем из daily_analytics
-    stats = db.query(
-        func.coalesce(func.sum(DailyAnalytics.new_users_count), 0).label('new_users'),
-        func.coalesce(func.sum(DailyAnalytics.revenue_eur), 0).label('revenue'),
-        func.coalesce(func.sum(DailyAnalytics.total_generations), 0).label('generations'),
-        func.coalesce(func.avg(DailyAnalytics.active_users_dau), 0).label('dau_avg'),
-        func.coalesce(func.sum(DailyAnalytics.new_referrals_count), 0).label('referrals'),
-    ).filter(
-        DailyAnalytics.date >= start_date,
-        DailyAnalytics.date <= end_date
-    ).first()
+    # Получаем все метрики через AnalyticsService
+    stats = analytics_service.get_comprehensive_stats(db, start_date, end_date)
     
-    total_users = db.query(func.count(UserModel.id)).scalar()
-    
-    return DashboardStatsResponse(
-        period_start=start_date,
-        period_end=end_date,
-        total_users=total_users,
-        new_users=int(stats.new_users or 0),
-        total_revenue_eur=float(stats.revenue or 0),
-        total_generations=int(stats.generations or 0),
-        dau_average=float(stats.dau_avg or 0),
-        new_referrals=int(stats.referrals or 0)
-    )
+    return DashboardStatsResponse(**stats)
 ```
 
 ---
 
-### 3.8. Cron-задача для Daily Analytics
+### 3.8. Сервис аналитики (гибридный подход)
 
 **Файл:** `backend/app/services/analytics_service.py` (СОЗДАТЬ)
 
 ```python
 """
-AnalyticsService - Сборщик ежедневной статистики
-Запускается через Cron (Railway Cron Job или Celery Beat)
+AnalyticsService - Гибридный подход к аналитике:
+- Быстрые метрики (DAU, Revenue, New Users) из DailyAnalytics (предагрегация)
+- Сложные метрики (WAU/MAU/LTV/Retention) считаются "на лету" через SQL
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func, distinct, cast, Date
+from sqlalchemy import func, distinct, cast, Date, and_, or_
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from typing import Dict
 import logging
 
 from app.models.daily_analytics import DailyAnalytics
@@ -1251,7 +1267,7 @@ class AnalyticsService:
     @staticmethod
     def collect_daily_stats(db: Session, target_date: date = None) -> DailyAnalytics:
         """
-        Собрать статистику за указанный день.
+        Собрать статистику за указанный день (для Cron).
         По умолчанию — за вчера.
         
         Запускать через Cron ежедневно в 00:05 UTC.
@@ -1284,7 +1300,7 @@ class AnalyticsService:
             Transaction.status == 'completed'
         ).scalar() or Decimal('0')
         
-        # 4. Paying users (уникальные плательщики)
+        # 4. Paying users (уникальные плательщики за день)
         paying_users = db.query(func.count(distinct(Transaction.user_id))).filter(
             Transaction.completed_at >= day_start,
             Transaction.completed_at <= day_end,
@@ -1352,6 +1368,231 @@ class AnalyticsService:
         )
         
         return analytics
+    
+    @staticmethod
+    def get_wau(db: Session, start_date: date, end_date: date) -> int:
+        """
+        WAU (Weekly Active Users) - уникальные пользователи с активностью за последние 7 дней.
+        Активность = запуск расширения или генерация.
+        """
+        week_start = end_date - timedelta(days=7)
+        week_start_dt = datetime.combine(week_start, datetime.min.time())
+        end_date_dt = datetime.combine(end_date, datetime.max.time())
+        
+        wau = db.query(func.count(distinct(ExtensionLog.user_id))).filter(
+            ExtensionLog.timestamp >= week_start_dt,
+            ExtensionLog.timestamp <= end_date_dt,
+            ExtensionLog.status.in_(['success', 'completed'])
+        ).scalar() or 0
+        
+        return wau
+    
+    @staticmethod
+    def get_mau(db: Session, start_date: date, end_date: date) -> int:
+        """
+        MAU (Monthly Active Users) - уникальные пользователи с активностью за последние 30 дней.
+        Активность = запуск расширения или генерация.
+        """
+        month_start = end_date - timedelta(days=30)
+        month_start_dt = datetime.combine(month_start, datetime.min.time())
+        end_date_dt = datetime.combine(end_date, datetime.max.time())
+        
+        mau = db.query(func.count(distinct(ExtensionLog.user_id))).filter(
+            ExtensionLog.timestamp >= month_start_dt,
+            ExtensionLog.timestamp <= end_date_dt,
+            ExtensionLog.status.in_(['success', 'completed'])
+        ).scalar() or 0
+        
+        return mau
+    
+    @staticmethod
+    def get_ltv(db: Session, start_date: date, end_date: date) -> float:
+        """
+        LTV (Lifetime Value) - средний доход с платящего пользователя за все время.
+        Считается только для пользователей, которые платили хотя бы раз.
+        """
+        # Для каждого платящего считаем сумму всех его транзакций
+        user_revenue_subq = db.query(
+            Transaction.user_id,
+            func.sum(Transaction.amount).label('total_revenue')
+        ).filter(
+            Transaction.status == 'completed'
+        ).group_by(Transaction.user_id).subquery()
+        
+        # Средний LTV
+        avg_ltv = db.query(func.coalesce(func.avg(user_revenue_subq.c.total_revenue), 0)).scalar() or 0
+        
+        return float(avg_ltv)
+    
+    @staticmethod
+    def get_retention_rate(db: Session, start_date: date, end_date: date) -> float:
+        """
+        Retention платящих (30 дней): % тех, кто платил в месяце N-1 и купил снова в месяце N.
+        
+        Алгоритм:
+        1. Находим платящих в месяце N-1 (базовая когорта)
+        2. Находим, сколько из них платили снова в месяце N
+        3. Retention = (платящие в N из когорты N-1) / (вся когорта N-1) * 100
+        """
+        # Месяц N-1 (предыдущий месяц)
+        prev_month_start = start_date - timedelta(days=30)
+        prev_month_end = start_date - timedelta(days=1)
+        
+        prev_month_start_dt = datetime.combine(prev_month_start, datetime.min.time())
+        prev_month_end_dt = datetime.combine(prev_month_end, datetime.max.time())
+        
+        # Месяц N (текущий период)
+        month_start_dt = datetime.combine(start_date, datetime.min.time())
+        month_end_dt = datetime.combine(end_date, datetime.max.time())
+        
+        # Базовая когорта: платящие в месяце N-1
+        cohort = db.query(distinct(Transaction.user_id)).filter(
+            Transaction.completed_at >= prev_month_start_dt,
+            Transaction.completed_at <= prev_month_end_dt,
+            Transaction.status == 'completed'
+        ).subquery()
+        
+        cohort_size = db.query(func.count(distinct(cohort.c.user_id))).scalar() or 0
+        
+        if cohort_size == 0:
+            return 0.0
+        
+        # Платящие из когорты, которые купили снова в месяце N
+        retained = db.query(func.count(distinct(Transaction.user_id))).filter(
+            Transaction.user_id.in_(db.query(cohort.c.user_id)),
+            Transaction.completed_at >= month_start_dt,
+            Transaction.completed_at <= month_end_dt,
+            Transaction.status == 'completed'
+        ).scalar() or 0
+        
+        retention_rate = (retained / cohort_size) * 100.0 if cohort_size > 0 else 0.0
+        
+        return round(retention_rate, 2)
+    
+    @staticmethod
+    def get_growth_rate(db: Session, start_date: date, end_date: date) -> float:
+        """
+        Темп роста пользователей: % изменения новых пользователей к прошлому месяцу.
+        """
+        # Текущий месяц
+        current_month_start = start_date
+        current_month_end = end_date
+        
+        # Предыдущий месяц (такой же период, но месяц назад)
+        days_in_period = (end_date - start_date).days + 1
+        prev_month_end = start_date - timedelta(days=1)
+        prev_month_start = prev_month_end - timedelta(days=days_in_period - 1)
+        
+        # Новые пользователи в текущем месяце
+        current_new = db.query(func.count(User.id)).filter(
+            cast(User.created_at, Date) >= current_month_start,
+            cast(User.created_at, Date) <= current_month_end
+        ).scalar() or 0
+        
+        # Новые пользователи в предыдущем месяце
+        prev_new = db.query(func.count(User.id)).filter(
+            cast(User.created_at, Date) >= prev_month_start,
+            cast(User.created_at, Date) <= prev_month_end
+        ).scalar() or 0
+        
+        if prev_new == 0:
+            return 100.0 if current_new > 0 else 0.0
+        
+        growth_rate = ((current_new - prev_new) / prev_new) * 100.0
+        return round(growth_rate, 2)
+    
+    @staticmethod
+    def get_comprehensive_stats(db: Session, start_date: date, end_date: date) -> Dict:
+        """
+        Получить все метрики для дашборда (гибридный подход).
+        
+        Returns:
+            Dict со всеми метриками для DashboardStatsResponse
+        """
+        # 1. Быстрые метрики из DailyAnalytics
+        stats = db.query(
+            func.coalesce(func.sum(DailyAnalytics.new_users_count), 0).label('new_users'),
+            func.coalesce(func.sum(DailyAnalytics.revenue_eur), 0).label('revenue'),
+            func.coalesce(func.sum(DailyAnalytics.total_generations), 0).label('generations'),
+            func.coalesce(func.avg(DailyAnalytics.active_users_dau), 0).label('dau_avg'),
+            func.coalesce(func.sum(DailyAnalytics.new_referrals_count), 0).label('referrals'),
+        ).filter(
+            DailyAnalytics.date >= start_date,
+            DailyAnalytics.date <= end_date
+        ).first()
+        
+        # 2. Общее количество пользователей
+        total_users = db.query(func.count(User.id)).scalar() or 0
+        
+        # 3. Новые пользователи за месяц
+        new_users_month = int(stats.new_users or 0)
+        
+        # 4. DAU (среднее за период)
+        dau_count = int(stats.dau_avg or 0)
+        dau_percentage = (dau_count / total_users * 100.0) if total_users > 0 else 0.0
+        
+        # 5. WAU (считаем "на лету")
+        wau_count = AnalyticsService.get_wau(db, start_date, end_date)
+        wau_percentage = (wau_count / total_users * 100.0) if total_users > 0 else 0.0
+        
+        # 6. MAU (считаем "на лету")
+        mau_count = AnalyticsService.get_mau(db, start_date, end_date)
+        mau_percentage = (mau_count / total_users * 100.0) if total_users > 0 else 0.0
+        
+        # 7. Платящие пользователи за месяц (уникальные)
+        month_start_dt = datetime.combine(start_date, datetime.min.time())
+        month_end_dt = datetime.combine(end_date, datetime.max.time())
+        
+        paying_users_month = db.query(func.count(distinct(Transaction.user_id))).filter(
+            Transaction.completed_at >= month_start_dt,
+            Transaction.completed_at <= month_end_dt,
+            Transaction.status == 'completed'
+        ).scalar() or 0
+        
+        paying_users_percentage = (paying_users_month / total_users * 100.0) if total_users > 0 else 0.0
+        
+        # 8. Revenue
+        total_revenue_eur = float(stats.revenue or 0)
+        
+        # 9. AOV (Average Order Value) - средний чек за месяц
+        transaction_count = db.query(func.count(Transaction.id)).filter(
+            Transaction.completed_at >= month_start_dt,
+            Transaction.completed_at <= month_end_dt,
+            Transaction.status == 'completed'
+        ).scalar() or 0
+        
+        average_check = (total_revenue_eur / transaction_count) if transaction_count > 0 else 0.0
+        
+        # 10. LTV (считаем "на лету")
+        ltv = AnalyticsService.get_ltv(db, start_date, end_date)
+        
+        # 11. Retention (считаем "на лету")
+        retention_rate = AnalyticsService.get_retention_rate(db, start_date, end_date)
+        
+        # 12. Темп роста
+        growth_rate = AnalyticsService.get_growth_rate(db, start_date, end_date)
+        
+        return {
+            "period_start": start_date,
+            "period_end": end_date,
+            "total_users": total_users,
+            "new_users_month": new_users_month,
+            "growth_rate": growth_rate,
+            "dau_count": dau_count,
+            "dau_percentage": round(dau_percentage, 2),
+            "wau_count": wau_count,
+            "wau_percentage": round(wau_percentage, 2),
+            "mau_count": mau_count,
+            "mau_percentage": round(mau_percentage, 2),
+            "paying_users_month": paying_users_month,
+            "paying_users_percentage": round(paying_users_percentage, 2),
+            "total_revenue_eur": total_revenue_eur,
+            "average_check": round(average_check, 2),
+            "ltv": round(ltv, 2),
+            "retention_rate": retention_rate,
+            "total_generations": int(stats.generations or 0),
+            "new_referrals": int(stats.referrals or 0),
+        }
     
     @staticmethod
     def backfill(db: Session, days: int = 30):
@@ -1521,13 +1762,35 @@ export interface UpdateReferralConfigRequest {
 // === ANALYTICS ===
 
 export interface DashboardStats {
+  // Период
   period_start: string;
   period_end: string;
+  
+  // 1. Приток пользователей
   total_users: number;
-  new_users: number;
+  new_users_month: number;
+  growth_rate: number;
+  
+  // 2. Активные пользователи
+  dau_count: number;
+  dau_percentage: number;
+  wau_count: number;
+  wau_percentage: number;
+  mau_count: number;
+  mau_percentage: number;
+  
+  // 3. Платящие пользователи
+  paying_users_month: number;
+  paying_users_percentage: number;
+  
+  // 4. Доход и средний чек
   total_revenue_eur: number;
+  average_check: number;
+  ltv: number;
+  retention_rate: number;
+  
+  // Дополнительные метрики
   total_generations: number;
-  dau_average: number;
   new_referrals: number;
 }
 
@@ -1587,12 +1850,98 @@ frontend/app/admin/
 │   └── promocodes/
 │       └── page.tsx   # Детальное управление промокодами
 └── analytics/
-    └── page.tsx       # Подробная аналитика
+    └── page.tsx       # Подробная аналитика (см. описание ниже)
+```
+
+### 4.5. Страница аналитики (детальное описание UI)
+
+**Файл:** `frontend/app/admin/analytics/page.tsx`
+
+**Структура страницы:**
+
+1. **Верхняя панель с фильтрами:**
+   - Выбор периода (7/30/90 дней, кастомный диапазон)
+   - Кнопка обновления данных
+
+2. **Карточки с ключевыми метриками (Grid 2x2):**
+
+   **Карточка 1: Приток пользователей**
+   - Общее количество пользователей (большой шрифт)
+   - Новые пользователи за месяц
+   - Темп роста (% с индикатором ↑/↓)
+
+   **Карточка 2: Активные пользователи**
+   - DAU: количество и % от общего
+   - WAU: количество и % от общего
+   - MAU: количество и % от общего
+   - Визуализация: прогресс-бары для каждого показателя
+
+   **Карточка 3: Платящие пользователи**
+   - Количество платящих за месяц
+   - % платящих от общего количества
+   - Визуализация: круговая диаграмма (платящие / неплатящие)
+
+   **Карточка 4: Доход и средний чек**
+   - Общая выручка за месяц (EUR)
+   - AOV (Average Order Value)
+   - LTV (Lifetime Value)
+   - Retention rate (30 дней) с индикатором
+
+3. **Графики (ниже карточек):**
+
+   **График 1: Динамика пользователей (линейный)**
+   - Ось X: дни
+   - Ось Y: количество
+   - Линии: Новые пользователи, DAU, WAU, MAU
+
+   **График 2: Динамика дохода (линейный)**
+   - Ось X: дни
+   - Ось Y: EUR
+   - Линия: Выручка по дням
+
+   **График 3: Retention (столбчатый)**
+   - Ось X: месяцы
+   - Ось Y: %
+   - Столбцы: Retention rate по месяцам
+
+4. **Таблица с дополнительными метриками:**
+   - Общее количество генераций
+   - Новые рефералы
+   - Среднее количество генераций на пользователя
+   - Конверсия в платящих
+
+**Пример реализации карточки:**
+
+```typescript
+// Карточка "Активные пользователи"
+<div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+  <h3 className="text-lg font-semibold mb-4">Активные пользователи</h3>
+  
+  <div className="space-y-4">
+    <div>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-white/60">DAU</span>
+        <span className="text-2xl font-bold">{stats.dau_count}</span>
+      </div>
+      <div className="text-sm text-white/40">
+        {stats.dau_percentage.toFixed(1)}% от общего числа
+      </div>
+      <div className="w-full bg-white/10 rounded-full h-2 mt-2">
+        <div 
+          className="bg-indigo-500 h-2 rounded-full" 
+          style={{ width: `${Math.min(stats.dau_percentage, 100)}%` }}
+        />
+      </div>
+    </div>
+    
+    {/* Аналогично для WAU и MAU */}
+  </div>
+</div>
 ```
 
 ---
 
-### 4.5. Раздел "Бонусы" в личном кабинете
+### 4.6. Раздел "Бонусы" в личном кабинете
 
 **Файл:** `frontend/app/dashboard/referral/page.tsx` (СОЗДАТЬ)
 
@@ -1684,9 +2033,106 @@ export default function ReferralPage() {
 
 ---
 
-## 5. Testing Strategy
+## 5. Архитектура аналитики (детальное описание)
 
-### 5.1. Backend Unit Tests
+### 5.1. Гибридный подход
+
+**Проблема:** WAU/MAU нельзя получить простым суммированием DAU из `DailyAnalytics`, так как один пользователь может быть активен в несколько дней, что приведет к дублированию.
+
+**Решение:** Гибридный подход:
+
+1. **Быстрые метрики (из DailyAnalytics):**
+   - DAU (среднее за период)
+   - Revenue (сумма за период)
+   - New Users (сумма за период)
+   - Total Generations (сумма за период)
+
+2. **Сложные метрики (SQL "на лету"):**
+   - **WAU:** `COUNT(DISTINCT user_id)` из `extension_logs` за последние 7 дней
+   - **MAU:** `COUNT(DISTINCT user_id)` из `extension_logs` за последние 30 дней
+   - **LTV:** Среднее значение суммы всех транзакций по платящим пользователям
+   - **Retention:** Процент платящих из когорты N-1, которые купили снова в месяце N
+
+### 5.2. Алгоритмы расчета метрик
+
+**WAU (Weekly Active Users):**
+```sql
+SELECT COUNT(DISTINCT user_id)
+FROM extension_logs
+WHERE timestamp >= NOW() - INTERVAL '7 days'
+  AND status IN ('success', 'completed');
+```
+
+**MAU (Monthly Active Users):**
+```sql
+SELECT COUNT(DISTINCT user_id)
+FROM extension_logs
+WHERE timestamp >= NOW() - INTERVAL '30 days'
+  AND status IN ('success', 'completed');
+```
+
+**LTV (Lifetime Value):**
+```sql
+WITH user_revenue AS (
+  SELECT user_id, SUM(amount) as total_revenue
+  FROM transactions
+  WHERE status = 'completed'
+  GROUP BY user_id
+)
+SELECT AVG(total_revenue) as avg_ltv
+FROM user_revenue;
+```
+
+**Retention Rate (30 дней):**
+```sql
+-- Когорта N-1 (платящие в предыдущем месяце)
+WITH cohort AS (
+  SELECT DISTINCT user_id
+  FROM transactions
+  WHERE completed_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month')
+    AND completed_at < DATE_TRUNC('month', NOW())
+    AND status = 'completed'
+),
+-- Платящие из когорты в текущем месяце
+retained AS (
+  SELECT COUNT(DISTINCT t.user_id) as count
+  FROM transactions t
+  INNER JOIN cohort c ON t.user_id = c.user_id
+  WHERE t.completed_at >= DATE_TRUNC('month', NOW())
+    AND t.completed_at < DATE_TRUNC('month', NOW() + INTERVAL '1 month')
+    AND t.status = 'completed'
+)
+SELECT 
+  (SELECT COUNT(*) FROM cohort) as cohort_size,
+  (SELECT count FROM retained) as retained_count,
+  CASE 
+    WHEN (SELECT COUNT(*) FROM cohort) > 0 
+    THEN ((SELECT count FROM retained)::float / (SELECT COUNT(*) FROM cohort)::float) * 100
+    ELSE 0
+  END as retention_rate;
+```
+
+### 5.3. Оптимизация производительности
+
+1. **Индексы (уже должны быть):**
+   - `extension_logs.user_id` + `extension_logs.timestamp`
+   - `transactions.user_id` + `transactions.completed_at` + `transactions.status`
+   - `users.created_at`
+
+2. **Кэширование (опционально, для будущего):**
+   - WAU/MAU можно кэшировать на 1 час (Redis)
+   - LTV можно кэшировать на 24 часа (меняется редко)
+   - Retention можно кэшировать на 1 час
+
+3. **Ограничения:**
+   - Максимальный период для запроса: 365 дней
+   - При больших периодах (>90 дней) может потребоваться пагинация или агрегация
+
+---
+
+## 6. Testing Strategy
+
+### 6.1. Backend Unit Tests
 
 **Файл:** `backend/tests/test_referral.py` (СОЗДАТЬ)
 
@@ -1753,7 +2199,7 @@ class TestReferralService:
         # Баланс должен увеличиться на 50
 ```
 
-### 5.2. QA Checklist
+### 6.2. QA Checklist
 
 ```markdown
 ## Backend Checklist
@@ -1766,6 +2212,13 @@ class TestReferralService:
 - [ ] Промокод с max_uses блокируется после исчерпания
 - [ ] Атомарность: параллельные запросы не "теряют" кредиты
 - [ ] PaymentService вызывает referral_service.process_referral_reward
+- [ ] AnalyticsService.get_wau возвращает корректное значение (без дублей)
+- [ ] AnalyticsService.get_mau возвращает корректное значение (без дублей)
+- [ ] AnalyticsService.get_ltv считает средний LTV только по платящим
+- [ ] AnalyticsService.get_retention_rate корректно считает retention (30 дней)
+- [ ] AnalyticsService.get_growth_rate корректно считает темп роста
+- [ ] GET /admin/analytics/dashboard возвращает все требуемые поля
+- [ ] Время ответа /admin/analytics/dashboard < 500ms (для периода 30 дней)
 
 ## Frontend Checklist
 
@@ -1777,14 +2230,22 @@ class TestReferralService:
 - [ ] Админка: список промокодов загружается
 - [ ] Админка: создание промокода работает
 - [ ] Админка: настройка реферальных наград работает
+- [ ] Админка: страница аналитики отображает все карточки
+- [ ] Админка: карточки показывают корректные значения (DAU/WAU/MAU)
+- [ ] Админка: графики отображаются корректно
+- [ ] Админка: фильтр периода работает
+- [ ] Админка: все проценты рассчитываются корректно
 
 ## Integration Checklist
 
 - [ ] Полный flow: A регистрируется по ссылке B → A покупает → B получает бонус
 - [ ] Cron-задача analytics собирает данные корректно
+- [ ] WAU/MAU не содержат дублей (проверить вручную через SQL)
+- [ ] LTV считается только по платящим пользователям
+- [ ] Retention rate корректно считает когорту и retained пользователей
 ```
 
-### 5.3. SQL-запросы для ручной проверки
+### 6.3. SQL-запросы для ручной проверки
 
 ```sql
 -- Проверить реферальные связи
@@ -1828,13 +2289,66 @@ WHERE u.referral_code IS NOT NULL
 GROUP BY u.id
 ORDER BY invited_count DESC
 LIMIT 20;
+
+-- Проверить WAU (должно быть без дублей)
+SELECT COUNT(DISTINCT user_id) as wau
+FROM extension_logs
+WHERE timestamp >= NOW() - INTERVAL '7 days'
+  AND status IN ('success', 'completed');
+
+-- Проверить MAU (должно быть без дублей)
+SELECT COUNT(DISTINCT user_id) as mau
+FROM extension_logs
+WHERE timestamp >= NOW() - INTERVAL '30 days'
+  AND status IN ('success', 'completed');
+
+-- Проверить LTV (средний доход с платящего)
+WITH user_revenue AS (
+  SELECT user_id, SUM(amount) as total_revenue
+  FROM transactions
+  WHERE status = 'completed'
+  GROUP BY user_id
+)
+SELECT 
+    COUNT(*) as paying_users_count,
+    AVG(total_revenue) as avg_ltv,
+    MIN(total_revenue) as min_ltv,
+    MAX(total_revenue) as max_ltv
+FROM user_revenue;
+
+-- Проверить Retention (30 дней)
+WITH cohort AS (
+  SELECT DISTINCT user_id
+  FROM transactions
+  WHERE completed_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month')
+    AND completed_at < DATE_TRUNC('month', NOW())
+    AND status = 'completed'
+),
+retained AS (
+  SELECT COUNT(DISTINCT t.user_id) as count
+  FROM transactions t
+  INNER JOIN cohort c ON t.user_id = c.user_id
+  WHERE t.completed_at >= DATE_TRUNC('month', NOW())
+    AND t.completed_at < DATE_TRUNC('month', NOW() + INTERVAL '1 month')
+    AND t.status = 'completed'
+)
+SELECT 
+  (SELECT COUNT(*) FROM cohort) as cohort_size,
+  (SELECT count FROM retained) as retained_count,
+  ROUND(
+    CASE 
+      WHEN (SELECT COUNT(*) FROM cohort) > 0 
+      THEN ((SELECT count FROM retained)::float / (SELECT COUNT(*) FROM cohort)::float) * 100
+      ELSE 0
+    END, 2
+  ) as retention_rate_percent;
 ```
 
 ---
 
-## 6. Deployment & Release Plan
+## 7. Deployment & Release Plan
 
-### 6.1. Порядок деплоя
+### 7.1. Порядок деплоя
 
 1. **Backend (Railway):**
    ```bash
@@ -1872,7 +2386,7 @@ LIMIT 20;
    -- Запустить: python -c "from app.services.analytics_service import analytics_service; from app.db.session import SessionLocal; analytics_service.backfill(SessionLocal(), 30)"
    ```
 
-### 6.2. Rollback план
+### 7.2. Rollback план
 
 ```bash
 # Откат миграции (если что-то пошло не так)
@@ -1885,7 +2399,7 @@ git push origin main
 
 ---
 
-## 7. Security Considerations
+## 8. Security Considerations
 
 | Риск | Митигация |
 |------|-----------|
@@ -1897,13 +2411,16 @@ git push origin main
 
 ---
 
-## 8. Future Improvements (Post-MVP)
+## 9. Future Improvements (Post-MVP)
 
 - [ ] Многоуровневая реферальная программа (награда за рефералов второго уровня)
 - [ ] Временные промокоды с ограниченным окном активации
 - [ ] Webhook-уведомления о новых рефералах в Telegram
 - [ ] A/B тестирование размера реферальных наград
-- [ ] Retention-аналитика (когортный анализ)
+- [ ] Когортный анализ (детальная разбивка по когортам регистрации)
+- [ ] Кэширование WAU/MAU/LTV в Redis для ускорения запросов
+- [ ] Экспорт аналитики в CSV/Excel
+- [ ] Email-дайджесты аналитики для админов
 
 ---
 

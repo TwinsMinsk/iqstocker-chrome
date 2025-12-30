@@ -4,6 +4,7 @@ FastAPI Application Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
@@ -34,6 +35,10 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# Добавляем ProxyHeadersMiddleware для корректной работы за прокси (Railway)
+# Это позволяет FastAPI правильно определять https и IP адрес клиента
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # TrustedHostMiddleware - на Railway может вызывать проблемы с 400 Bad Request
 # если HOST заголовок не совпадает. Разрешаем все хосты, если в настройках "*"
 allowed_hosts = settings.ALLOWED_HOSTS
@@ -60,7 +65,17 @@ else:
 #
 # В production на Railway разрешаем все origins, чтобы гарантированно убрать блокировку регистрации.
 # (Позже можно сузить до конкретного домена фронтенда через переменную CORS_ORIGINS.)
-origins = ["*"] if settings.ENVIRONMENT == "production" else settings.CORS_ORIGINS
+if settings.ENVIRONMENT == "production":
+    origins = ["*"]
+else:
+    # В development всегда добавляем localhost:3000 для фронтенда
+    origins = list(settings.CORS_ORIGINS)
+    if "http://localhost:3000" not in origins:
+        origins.append("http://localhost:3000")
+    # Если в списке только "*", заменяем на конкретные origins для работы с credentials
+    if origins == ["*"]:
+        origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 # Если в списке есть "*", то allow_credentials должно быть False (требование CORS спецификации)
 allow_all_origins = "*" in origins
 
@@ -73,19 +88,36 @@ app.add_middleware(
 )
 
 # Routes
-app.include_router(v1_router, prefix=settings.API_V1_PREFIX)
+# ВАЖНО для production:
+# На Railway/в CI переменная API_V1_PREFIX иногда задаётся с хвостовым слэшем ("/api/v1/"),
+# что приводит к фактическим URL вида "/api/v1//users/me" и даёт 404 при запросе "/api/v1/users/me".
+# Поэтому нормализуем префикс здесь (и дополнительно держим алиас на "/api/v1" для совместимости).
+api_prefix = (settings.API_V1_PREFIX or "/api/v1").strip()
+api_prefix = "/" + api_prefix.lstrip("/")  # гарантируем ведущий "/"
+api_prefix = api_prefix.rstrip("/")        # убираем хвостовой "/"
+if api_prefix == "/":
+    api_prefix = ""
+
+app.include_router(v1_router, prefix=api_prefix)
+
+# Алиас на стандартный префикс, чтобы фронт гарантированно работал даже при ошибочной env-конфигурации.
+if api_prefix != "/api/v1":
+    app.include_router(v1_router, prefix="/api/v1")
 
 
 # Startup/Shutdown events
 @app.on_event("startup")
 async def startup_event():
     """Инициализация при старте приложения"""
-    # Создаем таблицы в базе данных (если их еще нет)
-    try:
-        init_db()
-        print("✅ Database tables initialized")
-    except Exception as e:
-        print(f"⚠️ Database initialization error: {e}")
+    # ВАЖНО:
+    # - SQLite (dev/test): создаём таблицы через create_all.
+    # - PostgreSQL (production): НЕ используем create_all, только Alembic миграции.
+    if settings.USE_SQLITE or settings.ENVIRONMENT == "test":
+        try:
+            init_db()
+            print("✅ Database tables initialized")
+        except Exception as e:
+            print(f"⚠️ Database initialization error: {e}")
     
     # Инициализация Redis
     try:

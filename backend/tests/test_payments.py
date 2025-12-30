@@ -92,6 +92,65 @@ def test_tribute_webhook_new_subscription(client, db, tribute_webhook_secret, mo
     assert data["status"] == "ok"
 
 
+def test_tribute_webhook_is_idempotent(client, db, tribute_webhook_secret, monkeypatch):
+    """Повторный webhook с тем же payment_id не должен начислять кредиты дважды"""
+    from app.core.config import settings, get_settings
+    import app.services.payment_service
+    from app.models.user import User
+    from app.models.subscription import Subscription
+
+    get_settings.cache_clear()
+    monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    if hasattr(app.services.payment_service, "settings"):
+        monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+
+    user = User(
+        email="idem@example.com",
+        password_hash="test_hash",
+        telegram_user_id="987654321",
+        email_verified=True,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    sub = Subscription(user_id=user.id, plan_id="free", status="active", credits_balance=0)
+    db.add(sub)
+    db.commit()
+
+    webhook_data = {
+        "name": "payment_received",
+        "payload": {
+            "product_name": "500",
+            "period_id": "IDEMPOTENCY_PAY_1",
+            "amount": 1000,
+            "currency": "eur",
+            "custom_data": {"user_id": str(user.id)},
+        },
+    }
+
+    body_bytes = json.dumps(webhook_data, sort_keys=True).encode("utf-8")
+    signature = hmac.new(tribute_webhook_secret.encode(), body_bytes, hashlib.sha256).hexdigest()
+
+    r1 = client.post(
+        "/api/v1/payments/webhook/tribute",
+        content=body_bytes,
+        headers={"trbt-signature": signature, "Content-Type": "application/json"},
+    )
+    assert r1.status_code == status.HTTP_200_OK
+
+    r2 = client.post(
+        "/api/v1/payments/webhook/tribute",
+        content=body_bytes,
+        headers={"trbt-signature": signature, "Content-Type": "application/json"},
+    )
+    assert r2.status_code == status.HTTP_200_OK
+
+    db.refresh(sub)
+    assert int(sub.credits_balance) == 500
+
+
 def test_tribute_webhook_invalid_signature(client, tribute_webhook_secret, monkeypatch):
     """Тест webhook с неверной подписью"""
     # ВАЖНО: Устанавливаем секрет в настройках
@@ -125,7 +184,41 @@ def test_tribute_webhook_invalid_signature(client, tribute_webhook_secret, monke
         }
     )
     
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    # Согласно доке Tribute: 401 при неверной подписи
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_tribute_webhook_event_is_logged_on_invalid_signature(client, tribute_webhook_secret, monkeypatch, db):
+    """Должны логировать входящее событие даже при неверной подписи (для диагностики)"""
+    from app.core.config import settings, get_settings
+    import app.services.payment_service
+    from app.models.tribute_webhook_event import TributeWebhookEvent
+
+    get_settings.cache_clear()
+    monkeypatch.setattr(settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+    if hasattr(app.services.payment_service, 'settings'):
+        monkeypatch.setattr(app.services.payment_service.settings, "TRIBUTE_WEBHOOK_SECRET", tribute_webhook_secret)
+
+    webhook_data = {
+        "name": "new_subscription",
+        "payload": {"amount": 1000, "currency": "eur", "period_id": 777, "telegram_user_id": 123},
+    }
+    body_bytes = json.dumps(webhook_data, sort_keys=True).encode('utf-8')
+
+    response = client.post(
+        "/api/v1/payments/webhook/tribute",
+        content=body_bytes,
+        headers={
+            "trbt-signature": "invalid-signature",
+            "Content-Type": "application/json"
+        }
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # запись должна появиться
+    row = db.query(TributeWebhookEvent).order_by(TributeWebhookEvent.received_at.desc()).first()
+    assert row is not None
+    assert row.status in ("invalid_signature", "error")
 
 
 def test_tribute_webhook_cancelled_subscription(client, db, tribute_webhook_secret, monkeypatch):

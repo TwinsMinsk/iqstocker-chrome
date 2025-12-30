@@ -1,12 +1,3 @@
-/**
- * Возвращает метаданные актуальной версии расширения.
- *
- * Почему так:
- * - Файл `public/downloads/extension/latest.json` может кэшироваться CDN/браузером.
- * - Через API-роут мы жёстко ставим no-store, чтобы пользователи видели актуальную версию.
- *
- * Файл `latest.json` генерируется скриптом упаковки (см. `scripts/package-extension.ps1`).
- */
 import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

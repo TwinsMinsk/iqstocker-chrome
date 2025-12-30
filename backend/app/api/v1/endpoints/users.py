@@ -4,6 +4,7 @@ GET /users/me, PATCH /users/me, etc.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.db.session import get_db
 from app.schemas.user import (
@@ -13,8 +14,10 @@ from app.schemas.user import (
     LicenseKeyResponse,
 )
 from app.services.user_service import user_service
+from app.services.referral_service import referral_service
 from app.api.v1.dependencies import get_current_user
 from app.models.user import User
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -178,3 +181,49 @@ async def revoke_license_key(
         "success": True,
         "message": "License key revoked successfully"
     }
+
+
+# === REFERRAL STATS ===
+
+class ReferralStatsResponse(BaseModel):
+    referral_code: Optional[str]
+    invited_count: int
+    total_earned_credits: int
+
+
+@router.get("/me/referral", response_model=ReferralStatsResponse)
+async def get_my_referral_stats(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Получить статистику рефералов для текущего пользователя
+    
+    Включает:
+    - Реферальный код пользователя (генерируется автоматически если отсутствует)
+    - Количество приглашённых пользователей
+    - Общее количество заработанных кредитов
+    """
+    try:
+        # Убеждаемся что у пользователя есть referral_code (для старых пользователей)
+        if not user.referral_code:
+            try:
+                referral_service.assign_referral_code(db, user)
+                db.refresh(user)
+            except Exception as e:
+                # Если не удалось сгенерировать код, продолжаем без него
+                # (статистика всё равно будет работать)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to assign referral code to user {user.id}: {e}")
+        
+        stats = referral_service.get_referral_stats(db, str(user.id))
+        return ReferralStatsResponse(**stats)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in get_my_referral_stats for user {user.id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch referral stats: {str(e)}"
+        )

@@ -5,21 +5,31 @@ import { adminAPI } from '@/services/api/admin';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  const { data: usersData } = useQuery({
+  const { data: usersData, error: usersError } = useQuery({
     queryKey: ['admin-users', 1, 5],
     queryFn: () => adminAPI.getUsers({ page: 1, limit: 5 }),
   });
 
-  const { data: logsData } = useQuery({
+  const { data: logsData, error: logsError } = useQuery({
     queryKey: ['admin-logs', undefined, undefined, undefined, 10],
     queryFn: () => adminAPI.getLogs({ limit: 10 }),
   });
+
+  const hasError = Boolean(usersError || logsError);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-4">Обзор системы</h2>
       </div>
+
+      {hasError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">
+            Ошибка загрузки данных админки. Проверьте доступность backend и авторизацию.
+          </p>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
