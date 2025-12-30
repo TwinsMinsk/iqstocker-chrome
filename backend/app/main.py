@@ -88,7 +88,21 @@ app.add_middleware(
 )
 
 # Routes
-app.include_router(v1_router, prefix=settings.API_V1_PREFIX)
+# ВАЖНО для production:
+# На Railway/в CI переменная API_V1_PREFIX иногда задаётся с хвостовым слэшем ("/api/v1/"),
+# что приводит к фактическим URL вида "/api/v1//users/me" и даёт 404 при запросе "/api/v1/users/me".
+# Поэтому нормализуем префикс здесь (и дополнительно держим алиас на "/api/v1" для совместимости).
+api_prefix = (settings.API_V1_PREFIX or "/api/v1").strip()
+api_prefix = "/" + api_prefix.lstrip("/")  # гарантируем ведущий "/"
+api_prefix = api_prefix.rstrip("/")        # убираем хвостовой "/"
+if api_prefix == "/":
+    api_prefix = ""
+
+app.include_router(v1_router, prefix=api_prefix)
+
+# Алиас на стандартный префикс, чтобы фронт гарантированно работал даже при ошибочной env-конфигурации.
+if api_prefix != "/api/v1":
+    app.include_router(v1_router, prefix="/api/v1")
 
 
 # Startup/Shutdown events

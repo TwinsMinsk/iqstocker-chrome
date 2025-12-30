@@ -156,7 +156,28 @@ class Settings(BaseSettings):
             return [value] if value else ["*"]
     
     # API
+    # API prefix (важно: без хвостового "/")
     API_V1_PREFIX: str = "/api/v1"
+
+    @field_validator("API_V1_PREFIX", mode="before")
+    @classmethod
+    def normalize_api_v1_prefix(cls, v):
+        """
+        Нормализует API_V1_PREFIX:
+        - гарантирует ведущий "/"
+        - убирает хвостовые слэши
+
+        Это защищает от 404 в production, когда переменная окружения задана как "/api/v1/".
+        """
+        if v is None:
+            return "/api/v1"
+        s = str(v).strip()
+        if not s:
+            return "/api/v1"
+        if not s.startswith("/"):
+            s = "/" + s
+        s = s.rstrip("/")
+        return s or "/api/v1"
     
     # Security & Protection Settings
     # Batch validation settings
