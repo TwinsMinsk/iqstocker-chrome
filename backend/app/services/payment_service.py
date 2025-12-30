@@ -21,7 +21,7 @@ class PaymentService:
     """Сервис для обработки платежей"""
     
     @staticmethod
-    def verify_tribute_signature(request_body: bytes, signature: str) -> bool:
+    def verify_tribute_signature(request_body: bytes, signature: str, secret: str | None) -> bool:
         """
         Проверить HMAC-SHA256 подпись от Tribute
         
@@ -32,16 +32,25 @@ class PaymentService:
         Returns:
             True если подпись валидна, False иначе
         """
-        if not settings.TRIBUTE_WEBHOOK_SECRET:
-            logger.warning("TRIBUTE_WEBHOOK_SECRET not configured, skipping signature verification")
-            return True  # В development режиме пропускаем проверку
+        if not secret:
+            # В production это критично: не допускаем fail-open.
+            if settings.ENVIRONMENT == "production":
+                logger.error("TRIBUTE_WEBHOOK_SECRET is missing in production; rejecting webhook")
+                return False
+            # В dev/test допускаем fail-open, чтобы не блокировать локальную разработку.
+            logger.warning("TRIBUTE_WEBHOOK_SECRET not configured, skipping signature verification (non-production)")
+            return True
+
+        if not signature:
+            logger.warning("Missing trbt-signature header")
+            return False
         
         # ВАЖНО: Убеждаемся, что request_body это bytes
         if isinstance(request_body, str):
             request_body = request_body.encode('utf-8')
         
         computed = hmac.new(
-            settings.TRIBUTE_WEBHOOK_SECRET.encode(),
+            secret.encode(),
             request_body,
             hashlib.sha256
         ).hexdigest()
@@ -75,12 +84,16 @@ class PaymentService:
         Returns:
             Dict с результатом обработки
         """
-        # 1. Проверить подпись
-        if not PaymentService.verify_tribute_signature(request_body, signature):
+        # 1. Проверить подпись (секрет берем из ENV, иначе из БД админ-настройки)
+        from app.services.app_settings_service import app_settings_service
+
+        secret = settings.TRIBUTE_WEBHOOK_SECRET or app_settings_service.get_tribute_webhook_secret_plaintext(db)
+        if not PaymentService.verify_tribute_signature(request_body, signature, secret):
             logger.error("Invalid Tribute webhook signature")
             return {
                 "status": "error",
-                "message": "Invalid signature"
+                "message": "Invalid signature",
+                "error_code": "invalid_signature",
             }
         
         event_name = webhook_data.get("name")
@@ -116,7 +129,12 @@ class PaymentService:
             Dict с результатом
         """
         # В разных событиях ID может называться по-разному
-        payment_id = str(payload.get("period_id") or payload.get("payment_id") or payload.get("id"))
+        raw_payment_id = payload.get("period_id") or payload.get("payment_id") or payload.get("id")
+        if not raw_payment_id:
+            logger.error("Webhook payload missing payment identifier (period_id/payment_id/id)")
+            return {"status": "error", "message": "Missing payment id"}
+
+        payment_id = str(raw_payment_id)
         amount = payload.get("amount", 0) / 100  # Tribute передает в центах
         currency = payload.get("currency", "eur").upper()
         telegram_user_id = payload.get("telegram_user_id")
@@ -125,22 +143,74 @@ class PaymentService:
         product_name = payload.get("subscription_name") or payload.get("product_name") or payload.get("description", "")
         
         # Пытаемся найти user_id в custom_data или comment (Tribute часто туда кладет)
-        user_id = payload.get("custom_data", {}).get("user_id") or payload.get("comment")
+        custom_data = payload.get("custom_data") or {}
+        user_id = (custom_data.get("user_id") if isinstance(custom_data, dict) else None) or payload.get("comment")
         
         # Проверить на дублирование (idempotency)
         existing_transaction = db.query(Transaction).filter(
             Transaction.payment_id == payment_id
         ).first()
         
+        # ВАЖНО: если транзакция уже completed, это не значит, что мы безопасно начислили
+        # все побочные эффекты (например, реферальную награду). Поэтому делаем
+        # "reconciliation" (идемпотентно) по credit_transactions.
         if existing_transaction and existing_transaction.status == "completed":
-            logger.info(f"Transaction {payment_id} already processed")
-            return {
-                "status": "already_processed",
-                "message": "Transaction already processed"
-            }
+            if not existing_transaction.user_id:
+                logger.warning(f"Completed transaction {payment_id} has no user_id; cannot reconcile credits")
+                return {"status": "already_processed", "message": "Transaction already processed"}
+
+            from app.models.credit_transaction import CreditTransaction, CreditTransactionType
+            from app.services.credit_service import credit_service
+            from app.services.referral_service import referral_service
+
+            # 1) Purchase credits idempotency (must exist exactly once)
+            purchase_exists = db.query(CreditTransaction).filter(
+                CreditTransaction.user_id == existing_transaction.user_id,
+                CreditTransaction.type == CreditTransactionType.PURCHASE.value,
+                CreditTransaction.related_entity_id == payment_id,
+            ).first()
+
+            if not purchase_exists:
+                logger.warning(f"Reconciling missing purchase credit tx for payment {payment_id}")
+                _, credit_error = credit_service.add_credits(
+                    db=db,
+                    user_id=str(existing_transaction.user_id),
+                    amount=int(existing_transaction.credits),
+                    transaction_type=CreditTransactionType.PURCHASE.value,
+                    related_entity_id=payment_id,
+                    description=f"Purchase (replay): {existing_transaction.plan_id or ''}",
+                    commit=False,
+                )
+                if credit_error and credit_error != "duplicate_transaction":
+                    db.rollback()
+                    return {"status": "error", "message": f"Failed to reconcile credits: {credit_error}"}
+
+            # 2) Referral reward idempotency (safe to call multiple times)
+            referral_reward, ref_error = referral_service.process_referral_reward(
+                db=db,
+                payer_user_id=str(existing_transaction.user_id),
+                plan_id=str(existing_transaction.plan_id or ""),
+                payment_id=payment_id,
+            )
+            if ref_error:
+                db.rollback()
+                # Не откатываем payment (он уже processed), но сигнализируем ошибку.
+                return {"status": "error", "message": f"Failed to reconcile referral reward: {ref_error}"}
+
+            db.commit()
+            logger.info(f"Transaction {payment_id} already processed (reconciled)")
+            return {"status": "already_processed", "message": "Transaction already processed"}
         
-        # Определить план по названию или сумме
-        plan_id = PaymentService._get_plan_id_from_name(product_name)
+        # Определить план (самый надежный вариант — plan_id из custom_data)
+        plan_id = None
+        if isinstance(custom_data, dict):
+            plan_id_candidate = custom_data.get("plan_id")
+            if plan_id_candidate:
+                plan_id = str(plan_id_candidate)
+
+        # Fallback: план по названию или сумме
+        if not plan_id:
+            plan_id = PaymentService._get_plan_id_from_name(product_name)
         
         # Если не нашли по названию, попробуем по сумме (как запасной вариант)
         if not plan_id:
@@ -172,11 +242,18 @@ class PaymentService:
         if not target_user and payload.get("email"):
             target_user = db.query(User).filter(User.email == payload.get("email")).first()
 
+        if not target_user:
+            # Не создаём Transaction с user_id=None (в модели NOT NULL).
+            logger.error(
+                f"User not resolved for payment {payment_id}. "
+                f"user_id={user_id}, telegram_user_id={telegram_user_id}, email={payload.get('email')}"
+            )
+            return {"status": "error", "message": "User not found for payment"}
+
         # Создать или обновить транзакцию
         if existing_transaction:
             transaction = existing_transaction
-            if not transaction.user_id and target_user:
-                transaction.user_id = target_user.id
+            transaction.user_id = target_user.id
         else:
             transaction = Transaction(
                 payment_id=payment_id,
@@ -185,7 +262,7 @@ class PaymentService:
                 type="purchase",
                 status="pending",
                 plan_id=plan_id,
-                user_id=target_user.id if target_user else None
+                user_id=target_user.id
             )
             db.add(transaction)
         
@@ -194,28 +271,69 @@ class PaymentService:
         transaction.completed_at = datetime.utcnow()
         
         # Если нашли пользователя, обновляем его баланс
-        if transaction.user_id:
-            subscription = db.query(Subscription).filter(
-                Subscription.user_id == transaction.user_id
-            ).first()
-            
-            if not subscription:
-                # Создаем запись о балансе, если её нет
-                subscription = Subscription(
-                    user_id=transaction.user_id,
-                    plan_id=plan_id,
-                    credits_balance=0,
-                    status="active"
-                )
-                db.add(subscription)
-            
-            # Начислить кредиты
-            subscription.credits_balance += plan["credits"]
-            subscription.plan_id = plan_id  # Обновляем "текущий" пакет
-            subscription.status = "active"
-            
-            # Срок действия (для кредитов обычно 1 год или бессрочно)
-            subscription.subscription_expires_at = datetime.utcnow() + timedelta(days=plan.get("duration_days", 365))
+        subscription = db.query(Subscription).filter(
+            Subscription.user_id == transaction.user_id
+        ).first()
+
+        if not subscription:
+            # Создаем запись о балансе, если её нет
+            subscription = Subscription(
+                user_id=transaction.user_id,
+                plan_id=plan_id,
+                credits_balance=0,
+                status="active"
+            )
+            db.add(subscription)
+            db.flush()  # Нужно flush, чтобы credit_service мог найти subscription
+
+        # Начислить кредиты через credit_service для атомарности и аудита (идемпотентно через БД индекс)
+        from app.services.credit_service import credit_service
+        from app.models.credit_transaction import CreditTransactionType
+
+        _, credit_error = credit_service.add_credits(
+            db=db,
+            user_id=str(transaction.user_id),
+            amount=plan["credits"],
+            transaction_type=CreditTransactionType.PURCHASE.value,
+            related_entity_id=payment_id,
+            description=f"Purchase: {plan['name']}",
+            commit=False  # Commit делаем позже
+        )
+
+        if credit_error and credit_error != "duplicate_transaction":
+            logger.error(f"Failed to add credits: {credit_error}")
+            db.rollback()
+            return {
+                "status": "error",
+                "message": f"Failed to add credits: {credit_error}"
+            }
+
+        # Обновляем другие поля подписки (credit_service уже обновил баланс)
+        subscription.plan_id = plan_id  # Обновляем "текущий" пакет
+        subscription.status = "active"
+
+        # Срок действия (для кредитов обычно 1 год или бессрочно)
+        subscription.subscription_expires_at = datetime.utcnow() + timedelta(days=plan.get("duration_days", 365))
+
+        # === REFERRAL REWARD HOOK ===
+        # После успешного начисления кредитов — проверяем реферальную награду (идемпотентно)
+        from app.services.referral_service import referral_service
+
+        referral_reward, ref_error = referral_service.process_referral_reward(
+            db=db,
+            payer_user_id=str(transaction.user_id),
+            plan_id=plan_id,
+            payment_id=payment_id,
+        )
+
+        if ref_error:
+            logger.error(f"Failed to add referral reward: {ref_error}")
+            db.rollback()
+            return {"status": "error", "message": f"Failed referral reward: {ref_error}"}
+
+        if referral_reward:
+            logger.info(f"Referral reward {referral_reward} credits paid for payment {payment_id}")
+        # === END REFERRAL HOOK ===
                 
             # Отправить email уведомление
             if email_service:

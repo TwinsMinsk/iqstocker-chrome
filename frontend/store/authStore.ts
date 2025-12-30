@@ -19,7 +19,7 @@ interface AuthState {
   setTokens: (tokens: TokenResponse) => void;
   setUser: (user: UserProfileResponse) => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, referralCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   clearError: () => void;
@@ -117,10 +117,10 @@ export const useAuthStore = create<AuthState>()(
         }
         },
 
-        register: async (email: string, password: string) => {
+        register: async (email: string, password: string, referralCode?: string) => {
         set({ isLoading: true, error: null });
         try {
-          const tokens = await authAPI.register({ email, password });
+          const tokens = await authAPI.register({ email, password, referral_code: referralCode });
           get().setTokens(tokens);
           await get().fetchUser();
         } catch (error: any) {
@@ -180,9 +180,10 @@ export const useAuthStore = create<AuthState>()(
         },
 
         fetchUser: async () => {
+        set({ isLoading: true });
         try {
           const user = await usersAPI.getProfile();
-          set({ user, isAuthenticated: true });
+          set({ user, isAuthenticated: true, isLoading: false });
         } catch (error) {
           // Если ошибка 401, токен невалиден - очищаем состояние
           if ((error as any)?.response?.status === 401) {
@@ -190,14 +191,15 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: false, 
               user: null,
               accessToken: null,
-              refreshToken: null 
+              refreshToken: null,
+              isLoading: false
             });
             if (typeof window !== 'undefined') {
               localStorage.removeItem('access_token');
               localStorage.removeItem('refresh_token');
             }
           } else {
-            set({ isAuthenticated: false, user: null });
+            set({ isAuthenticated: false, user: null, isLoading: false });
           }
         }
         },

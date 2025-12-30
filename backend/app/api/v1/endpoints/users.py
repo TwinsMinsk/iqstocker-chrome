@@ -4,6 +4,7 @@ GET /users/me, PATCH /users/me, etc.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.db.session import get_db
 from app.schemas.user import (
@@ -13,8 +14,10 @@ from app.schemas.user import (
     LicenseKeyResponse,
 )
 from app.services.user_service import user_service
+from app.services.referral_service import referral_service
 from app.api.v1.dependencies import get_current_user
 from app.models.user import User
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -178,3 +181,28 @@ async def revoke_license_key(
         "success": True,
         "message": "License key revoked successfully"
     }
+
+
+# === REFERRAL STATS ===
+
+class ReferralStatsResponse(BaseModel):
+    referral_code: Optional[str]
+    invited_count: int
+    total_earned_credits: int
+
+
+@router.get("/me/referral", response_model=ReferralStatsResponse)
+async def get_my_referral_stats(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Получить статистику рефералов для текущего пользователя
+    
+    Включает:
+    - Реферальный код пользователя
+    - Количество приглашённых пользователей
+    - Общее количество заработанных кредитов
+    """
+    stats = referral_service.get_referral_stats(db, str(user.id))
+    return ReferralStatsResponse(**stats)

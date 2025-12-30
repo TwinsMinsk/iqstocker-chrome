@@ -9,13 +9,17 @@ from app.core.config import settings
 
 def init_db() -> None:
     """Создать все таблицы в базе данных"""
-    # Импортируем все models чтобы они зарегистрировались в Base
-    from app.models import user, subscription, license_key, transaction, extension_log  # noqa
+    # Импортируем ВСЕ модели, чтобы они зарегистрировались в Base.
+    # ВАЖНО: на SQLite (dev/test) мы создаём таблицы через create_all.
+    # На PostgreSQL (production) мы должны использовать Alembic миграции и не вызывать create_all,
+    # чтобы избежать расхождения схемы (constraints/indexes/uuid defaults/extensions).
+    from app import models  # noqa: F401
     
     if settings.DEBUG:
         print("Creating database tables...")
     
-    Base.metadata.create_all(bind=engine)
+    if settings.USE_SQLITE or settings.ENVIRONMENT == "test":
+        Base.metadata.create_all(bind=engine)
     
     if settings.DEBUG:
         print("Database tables created successfully!")

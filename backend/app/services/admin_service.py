@@ -10,6 +10,8 @@ import logging
 from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.extension_log import ExtensionLog
+from app.models.credit_transaction import CreditTransactionType
+from app.services.credit_service import credit_service
 from app.schemas.admin import (
     AdminUserItem,
     AdminUserListResponse,
@@ -123,7 +125,8 @@ class AdminService:
         user_id: str,
         balance: Optional[int] = None,
         is_blocked: Optional[bool] = None,
-        is_admin: Optional[bool] = None
+        is_admin: Optional[bool] = None,
+        admin_actor_id: Optional[str] = None
     ) -> Tuple[Optional[AdminUserUpdateResponse], Optional[str]]:
         """
         Обновить данные пользователя (админ)
@@ -159,17 +162,37 @@ class AdminService:
                     Subscription.user_id == user.id
                 ).order_by(Subscription.created_at.desc()).first()
                 
-                if subscription:
-                    subscription.credits_balance = balance
-                else:
+                if not subscription:
                     # Создаем подписку если её нет
                     subscription = Subscription(
                         user_id=user.id,
                         plan_id="free",
-                        credits_balance=balance,
+                        credits_balance=0,
                         status="active"
                     )
                     db.add(subscription)
+                    db.flush()
+
+                current_balance = int(subscription.credits_balance or 0)
+                target_balance = int(balance)
+
+                # ВАЖНО: пишем аудит через credit_transactions.
+                # Админ в UI задаёт "абсолютный" баланс, а в журнале храним delta.
+                delta = target_balance - current_balance
+                if delta != 0:
+                    actor = admin_actor_id or "unknown_admin"
+                    _, err = credit_service.add_credits(
+                        db=db,
+                        user_id=str(user.id),
+                        amount=delta,
+                        transaction_type=CreditTransactionType.MANUAL_ADJUSTMENT.value,
+                        related_entity_id=f"admin:{actor}",
+                        description=f"Admin manual adjustment to {target_balance} (delta {delta:+d})",
+                        commit=False,
+                    )
+                    if err:
+                        db.rollback()
+                        return None, f"Failed to adjust balance: {err}"
             
             # Обновление статуса блокировки
             if is_blocked is not None:

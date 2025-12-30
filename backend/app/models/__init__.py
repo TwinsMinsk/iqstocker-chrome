@@ -12,6 +12,8 @@ from app.models.promo_code import PromoCode
 from app.models.credit_transaction import CreditTransaction, CreditTransactionType
 from app.models.referral_config import ReferralConfig
 from app.models.daily_analytics import DailyAnalytics
+from app.models.app_setting import AppSetting
+from app.models.tribute_webhook_event import TributeWebhookEvent
 
 __all__ = [
     "User",
@@ -24,4 +26,6 @@ __all__ = [
     "CreditTransactionType",
     "ReferralConfig",
     "DailyAnalytics",
+    "AppSetting",
+    "TributeWebhookEvent",
 ]

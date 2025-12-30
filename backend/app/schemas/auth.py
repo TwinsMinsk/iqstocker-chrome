@@ -10,6 +10,7 @@ class RegisterRequest(BaseModel):
     """Схема для регистрации пользователя"""
     email: EmailStr
     password: str = Field(..., min_length=8)  # Минимум 8 символов, максимум проверяется в байтах
+    referral_code: Optional[str] = Field(None, max_length=12, description="Реферальный код пригласившего")
     
     @field_validator('password')
     @classmethod

@@ -51,6 +51,7 @@ class UserProfileResponse(BaseModel):
     id: str
     email: str
     is_admin: bool
+    is_superuser: bool = False  # Алиас для is_admin для совместимости
     email_verified: bool
     created_at: datetime
     balance: BalanceInfo

@@ -2,9 +2,9 @@
 PromoService - Управление промокодами
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import update
+from sqlalchemy import update, func
 from typing import Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.models.promo_code import PromoCode
@@ -65,22 +65,8 @@ class PromoService:
         """
         code = code.upper().strip()
         
-        # 1. Находим промокод
-        promo = db.query(PromoCode).filter(PromoCode.code == code).first()
-        if not promo:
-            return None, "Промокод не найден"
-        
-        # 2. Проверяем валидность
-        if not promo.is_valid():
-            if not promo.is_active:
-                return None, "Промокод деактивирован"
-            if promo.expires_at and datetime.utcnow() > promo.expires_at:
-                return None, "Срок действия промокода истёк"
-            if promo.max_uses and promo.current_uses >= promo.max_uses:
-                return None, "Промокод исчерпан"
-            return None, "Промокод недействителен"
-        
-        # 3. Проверяем, не использовал ли пользователь этот код ранее
+        # 1. Быстрая проверка, не использовал ли пользователь этот код ранее
+        # ВАЖНО: это не защита от гонок (race), это "fast path".
         already_used = db.query(CreditTransaction).filter(
             CreditTransaction.user_id == user_id,
             CreditTransaction.type == CreditTransactionType.PROMO_CODE.value,
@@ -90,28 +76,52 @@ class PromoService:
         if already_used:
             return None, "Вы уже использовали этот промокод"
         
-        # 4. АТОМАРНО: Увеличиваем счётчик использований
+        # 2. АТОМАРНО: проверяем активность/срок/лимит и увеличиваем счётчик.
+        # Это защищает от гонок по max_uses и от активации истёкшего/деактивированного кода.
+        # Примечание: expires_at может быть timezone-aware, поэтому сравниваем с func.now() на стороне БД.
         stmt = (
             update(PromoCode)
             .where(
                 PromoCode.code == code,
-                # Дополнительная проверка лимита на уровне SQL
-                (PromoCode.max_uses.is_(None)) | (PromoCode.current_uses < PromoCode.max_uses)
+                PromoCode.is_active.is_(True),
+                (PromoCode.expires_at.is_(None)) | (PromoCode.expires_at > func.now()),
+                (PromoCode.max_uses.is_(None)) | (PromoCode.current_uses < PromoCode.max_uses),
             )
             .values(current_uses=PromoCode.current_uses + 1)
-            .returning(PromoCode.current_uses)
+            .returning(PromoCode.current_uses, PromoCode.credit_amount)
         )
         result = db.execute(stmt)
-        updated_uses = result.scalar()
+        row = result.first()
         
-        if updated_uses is None:
-            return None, "Промокод исчерпан (конкурентный доступ)"
+        if row is None:
+            # Чтобы дать понятное сообщение, подчитываем актуальное состояние (не атомарно, но для UX ок).
+            promo = db.query(PromoCode).filter(PromoCode.code == code).first()
+            if not promo:
+                return None, "Промокод не найден"
+            if not promo.is_active:
+                return None, "Промокод деактивирован"
+            if promo.expires_at:
+                # Нормализуем на UTC для безопасного сравнения в Python
+                now_utc = datetime.now(timezone.utc)
+                expires_at = promo.expires_at
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if now_utc > expires_at:
+                    return None, "Срок действия промокода истёк"
+            if promo.max_uses and promo.current_uses >= promo.max_uses:
+                return None, "Промокод исчерпан"
+            return None, "Промокод недействителен"
+
+        # row = (current_uses, credit_amount)
+        promo_credit_amount = int(row[1])
         
-        # 5. Начисляем кредиты
-        new_balance, error = credit_service.add_credits(
+        # 3. Начисляем кредиты (в той же транзакции).
+        # Если здесь случится ошибка/unique violation — credit_service сделает rollback,
+        # и инкремент current_uses тоже откатится.
+        _, error = credit_service.add_credits(
             db=db,
             user_id=user_id,
-            amount=promo.credit_amount,
+            amount=promo_credit_amount,
             transaction_type=CreditTransactionType.PROMO_CODE.value,
             related_entity_id=code,
             description=f"Promo code: {code}",
@@ -119,13 +129,17 @@ class PromoService:
         )
         
         if error:
+            # Если сработал idempotency на уровне БД — трактуем как "уже использовали".
+            if error == "duplicate_transaction":
+                db.rollback()
+                return None, "Вы уже использовали этот промокод"
             db.rollback()
             return None, error
         
         db.commit()
         
-        logger.info(f"Promo redeemed: user={user_id}, code={code}, credits={promo.credit_amount}")
-        return promo.credit_amount, None
+        logger.info(f"Promo redeemed: user={user_id}, code={code}, credits={promo_credit_amount}")
+        return promo_credit_amount, None
     
     @staticmethod
     def list_promos(db: Session, include_inactive: bool = False) -> list:

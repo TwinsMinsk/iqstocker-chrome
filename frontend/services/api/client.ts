@@ -10,12 +10,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ||
     ? '' // В продакшене не используем localhost как фолбек
     : 'http://localhost:8000/api/v1');
 
-// Отладочный вывод
+// Проверка критических ошибок конфигурации
 if (typeof window !== 'undefined') {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('API Base URL:', API_BASE_URL);
-  }
-  
   if (!API_BASE_URL && process.env.NODE_ENV === 'production') {
     console.error('CRITICAL: NEXT_PUBLIC_API_URL is not defined! API calls will fail.');
   }

@@ -5,12 +5,12 @@ CreditService - Единая точка для всех операций с кр
 from sqlalchemy.orm import Session
 from sqlalchemy import update
 from typing import Optional, Tuple
-from datetime import datetime
 import logging
+from sqlalchemy.exc import IntegrityError
 
-from app.models.user import User
 from app.models.subscription import Subscription
-from app.models.credit_transaction import CreditTransaction, CreditTransactionType
+from app.models.credit_transaction import CreditTransaction
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,16 +52,22 @@ class CreditService:
             if not subscription:
                 return None, "Subscription not found"
             
-            # 2. АТОМАРНОЕ обновление баланса через SQL (защита от Race Condition)
-            # Используем UPDATE ... SET credits = credits + amount
-            stmt = (
-                update(Subscription)
-                .where(Subscription.id == subscription.id)
-                .values(credits_balance=Subscription.credits_balance + amount)
-                .returning(Subscription.credits_balance)
-            )
-            result = db.execute(stmt)
-            new_balance = result.scalar()
+            # 2. Обновление баланса
+            # PostgreSQL: делаем атомарно через UPDATE ... SET credits_balance = credits_balance + amount.
+            # SQLite: упрощаем (в dev/test конкуренция не критична, а RETURNING может быть недоступен).
+            if settings.USE_SQLITE:
+                subscription.credits_balance = int(subscription.credits_balance or 0) + int(amount)
+                db.flush()
+                new_balance = int(subscription.credits_balance or 0)
+            else:
+                stmt = (
+                    update(Subscription)
+                    .where(Subscription.id == subscription.id)
+                    .values(credits_balance=Subscription.credits_balance + amount)
+                    .returning(Subscription.credits_balance)
+                )
+                result = db.execute(stmt)
+                new_balance = result.scalar()
             
             # 3. Создаём запись в журнале транзакций
             credit_tx = CreditTransaction(
@@ -86,7 +92,14 @@ class CreditService:
             )
             
             return new_balance, None
-            
+
+        except IntegrityError as e:
+            # Чаще всего это idempotency (уникальный индекс на user_id/type/related_entity_id)
+            # — в таком случае caller должен решить, что делать (например, "уже обработано").
+            db.rollback()
+            logger.warning(f"IntegrityError in add_credits (likely duplicate): {e}")
+            return None, "duplicate_transaction"
+
         except Exception as e:
             db.rollback()
             logger.error(f"Error in add_credits: {e}")

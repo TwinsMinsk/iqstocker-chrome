@@ -1,9 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
+
+// Функция для чтения cookie (простая реализация без библиотеки)
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
+// Функция для удаления cookie
+function removeCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -40,7 +55,16 @@ export function RegisterForm() {
     }
 
     try {
-      await register(email, password);
+      // Читаем реферальный код из cookie
+      const refCode = getCookie('ref_code');
+      
+      await register(email, password, refCode || undefined);
+      
+      // Удаляем cookie после успешной регистрации
+      if (refCode) {
+        removeCookie('ref_code');
+      }
+      
       router.push('/dashboard');
     } catch (err: any) {
       // Обработка ошибок валидации FastAPI/Pydantic

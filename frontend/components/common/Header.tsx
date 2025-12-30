@@ -58,6 +58,16 @@ export function Header() {
                 >
                   Личный кабинет
                 </Link>
+                <Link
+                  href="/dashboard/referral"
+                  className="hidden sm:block text-xs font-black text-green-400 hover:text-green-300 uppercase tracking-widest transition-colors flex items-center gap-1"
+                  title="Реферальная программа"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Бонусы
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest"

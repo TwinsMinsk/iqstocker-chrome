@@ -3,7 +3,7 @@ PromoCode Model - Система промокодов
 """
 from sqlalchemy import Column, String, Integer, DateTime, Boolean, CheckConstraint
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.base import Base, TimestampMixin
 
@@ -36,8 +36,16 @@ class PromoCode(Base, TimestampMixin):
         """Проверить валидность промокода"""
         if not self.is_active:
             return False
-        if self.expires_at and datetime.utcnow() > self.expires_at:
-            return False
+        if self.expires_at:
+            # expires_at хранится как timezone-aware (timezone=True),
+            # а datetime.utcnow() возвращает naive datetime.
+            # Нормализуем к UTC-aware, чтобы избежать TypeError (naive vs aware).
+            now_utc = datetime.now(timezone.utc)
+            expires_at = self.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if now_utc > expires_at:
+                return False
         if self.max_uses and self.current_uses >= self.max_uses:
             return False
         return True

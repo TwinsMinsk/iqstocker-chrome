@@ -60,7 +60,17 @@ else:
 #
 # В production на Railway разрешаем все origins, чтобы гарантированно убрать блокировку регистрации.
 # (Позже можно сузить до конкретного домена фронтенда через переменную CORS_ORIGINS.)
-origins = ["*"] if settings.ENVIRONMENT == "production" else settings.CORS_ORIGINS
+if settings.ENVIRONMENT == "production":
+    origins = ["*"]
+else:
+    # В development всегда добавляем localhost:3000 для фронтенда
+    origins = list(settings.CORS_ORIGINS)
+    if "http://localhost:3000" not in origins:
+        origins.append("http://localhost:3000")
+    # Если в списке только "*", заменяем на конкретные origins для работы с credentials
+    if origins == ["*"]:
+        origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 # Если в списке есть "*", то allow_credentials должно быть False (требование CORS спецификации)
 allow_all_origins = "*" in origins
 
@@ -80,12 +90,15 @@ app.include_router(v1_router, prefix=settings.API_V1_PREFIX)
 @app.on_event("startup")
 async def startup_event():
     """Инициализация при старте приложения"""
-    # Создаем таблицы в базе данных (если их еще нет)
-    try:
-        init_db()
-        print("✅ Database tables initialized")
-    except Exception as e:
-        print(f"⚠️ Database initialization error: {e}")
+    # ВАЖНО:
+    # - SQLite (dev/test): создаём таблицы через create_all.
+    # - PostgreSQL (production): НЕ используем create_all, только Alembic миграции.
+    if settings.USE_SQLITE or settings.ENVIRONMENT == "test":
+        try:
+            init_db()
+            print("✅ Database tables initialized")
+        except Exception as e:
+            print(f"⚠️ Database initialization error: {e}")
     
     # Инициализация Redis
     try:
