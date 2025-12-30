@@ -93,7 +93,7 @@ class AdminService:
             balance = subscription.credits_balance if subscription else 0
             last_active = last_log.timestamp if last_log else None
             is_blocked = not user.is_active
-            referrals_count = len(user.referred_users)
+            referrals_count = len(user.referred_users) if user.referred_users is not None else 0
             
             user_items.append(AdminUserItem(
                 id=str(user.id),
