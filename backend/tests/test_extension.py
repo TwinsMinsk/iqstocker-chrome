@@ -7,6 +7,7 @@ from fastapi import status
 from app.models.user import User
 from app.models.subscription import Subscription
 from app.models.license_key import LicenseKey
+from app.models.extension_log import ExtensionLog
 from app.core.security import get_password_hash, generate_license_key
 
 
@@ -244,8 +245,60 @@ def test_finalize_session_deducts_missing_credits(client, user_with_license, db,
         # 3) Проверяем баланс в БД
         sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
         assert sub.credits_balance == start_balance - 3
+
+        # 4) Проверяем, что записался ExtensionLog (fail-open логирование через finalize-session)
+        log = (
+            db.query(ExtensionLog)
+            .filter(ExtensionLog.session_id == session_token)
+            .order_by(ExtensionLog.timestamp.desc())
+            .first()
+        )
+        assert log is not None
+        assert str(log.user_id) == str(user.id)
+        assert log.prompts_count == 5  # planned from batch-validate
+        assert log.successful_count == 3
+        assert log.failed_count == 0
     finally:
         app.dependency_overrides.pop(get_redis_client, None)
+
+
+def test_log_usage_creates_or_updates_extension_log(client, user_with_license, db):
+    """
+    /extensions/log-usage должен создавать/обновлять ExtensionLog (без текстов промптов).
+    """
+    user, license_key, _subscription = user_with_license
+
+    resp = client.post(
+        "/api/v1/extensions/log-usage",
+        headers={"X-License-Key": license_key},
+        json={
+            "session_id": "sess_test_1",
+            "prompts_count": 10,
+            "errors_count": 2,
+            "duration_seconds": 123,
+            "events": [
+                {"type": "network_error", "http_status": 502, "detail": "Bad gateway"},
+                # Пытаемся подсунуть потенциально опасное поле — должно быть вырезано
+                {"type": "error", "prompt": "SECRET PROMPT TEXT SHOULD NOT BE STORED"},
+            ],
+        },
+    )
+    assert resp.status_code == status.HTTP_200_OK
+
+    log = (
+        db.query(ExtensionLog)
+        .filter(ExtensionLog.user_id == user.id, ExtensionLog.session_id == "sess_test_1")
+        .order_by(ExtensionLog.timestamp.desc())
+        .first()
+    )
+    assert log is not None
+    assert log.prompts_count == 10
+    assert log.successful_count == 8
+    assert log.failed_count == 2
+    assert log.duration_seconds == 123
+    # Должно быть что-то полезное, но без prompt
+    if log.error_message:
+        assert "SECRET PROMPT TEXT" not in log.error_message
 
 
 def test_deduct_credit_rejects_out_of_range_index(client, user_with_license, db, monkeypatch):

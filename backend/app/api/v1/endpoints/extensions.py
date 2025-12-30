@@ -19,6 +19,7 @@ from app.schemas.extension import (
 from app.services.extension_service import get_extension_service
 from app.api.v1.dependencies import get_current_user_optional
 from app.integrations.redis_client import get_redis_client
+from app.models.extension_log import ExtensionLog
 
 router = APIRouter(prefix="/extensions", tags=["extensions"])
 
@@ -240,7 +241,8 @@ async def get_balance(
 async def log_usage(
     request: LogUsageRequest,
     license_key: Optional[str] = Header(None, alias="X-License-Key"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    redis_client = Depends(get_redis_client),
 ):
     """
     Логировать использование расширения.
@@ -248,8 +250,152 @@ async def log_usage(
     ВАЖНО: НЕ СОХРАНЯЕМ тексты промптов, только метаданные!
     Используется для аналитики и отладки.
     """
-    # TODO: Реализовать сохранение логов в ExtensionLog model
-    # Сейчас просто подтверждаем получение
+    if not license_key:
+        raise HTTPException(status_code=401, detail="Missing X-License-Key")
+
+    service = get_extension_service(db, redis_client)
+    validated = await service.validate_license_key(license_key)
+    if not validated:
+        raise HTTPException(status_code=401, detail="Invalid license key")
+
+    _, _, user = validated
+
+    def _safe_int(v, default: int = 0) -> int:
+        try:
+            return int(v)
+        except Exception:
+            return default
+
+    def _status_from_counts(total: int, errors: int) -> str:
+        total = max(0, _safe_int(total))
+        errors = max(0, _safe_int(errors))
+        if total == 0 and errors == 0:
+            return "paused"
+        if total == 0 and errors > 0:
+            return "error"
+        if errors == 0:
+            return "success"
+        return "completed"
+
+    def _sanitize_events(events) -> tuple[Optional[str], Optional[str]]:
+        """
+        Максимально безопасное логирование:
+        - НЕ сохраняем тексты промптов
+        - выкидываем подозрительные ключи (prompt/text/content)
+        - ограничиваем размер
+        Возвращаем (error_type, error_message) — обе строки могут быть None.
+        """
+        if not events:
+            return None, None
+
+        if not isinstance(events, list):
+            return None, None
+
+        allowed_keys = {
+            "type",
+            "error_type",
+            "code",
+            "status",
+            "step",
+            "ts",
+            "timestamp",
+            "http_status",
+            "retry",
+            "detail",
+            "reason",
+        }
+
+        sanitized: list[dict] = []
+        inferred_error_type: Optional[str] = None
+
+        for raw in events[:30]:
+            if not isinstance(raw, dict):
+                continue
+
+            item: dict = {}
+            for k, v in raw.items():
+                key = str(k)
+                lower = key.lower()
+                # Жёстко вырезаем любые потенциальные поля с промптами/контентом
+                if "prompt" in lower or "content" in lower or "text" in lower:
+                    continue
+                if key not in allowed_keys:
+                    continue
+
+                if isinstance(v, (int, float, bool)) or v is None:
+                    item[key] = v
+                else:
+                    # Строки/объекты — в строку, ограничиваем длину
+                    s = str(v)
+                    item[key] = s[:240]
+
+                if inferred_error_type is None and key in ("error_type", "type") and isinstance(v, str):
+                    inferred_error_type = v[:100]
+
+            if item:
+                sanitized.append(item)
+
+        if not sanitized:
+            return inferred_error_type, None
+
+        # Кладём только компактный JSON (без ASCII-экранирования), но ограничиваем общий размер
+        try:
+            import json as _json
+            msg = _json.dumps(sanitized, ensure_ascii=False)
+            return inferred_error_type, msg[:4000]
+        except Exception:
+            return inferred_error_type, None
+
+    prompts_total = _safe_int(request.prompts_count, 0)
+    errors_total = _safe_int(request.errors_count, 0)
+    status = _status_from_counts(prompts_total, errors_total)
+
+    error_type, error_message = _sanitize_events(request.events)
+    if not error_type and errors_total > 0:
+        error_type = "unknown"
+
+    successful = max(0, prompts_total - errors_total)
+    failed = max(0, errors_total)
+
+    # Upsert по (user_id, session_id): чтобы не плодить 1000 записей при повторных send
+    try:
+        existing = (
+            db.query(ExtensionLog)
+            .filter(ExtensionLog.user_id == user.id, ExtensionLog.session_id == request.session_id)
+            .order_by(ExtensionLog.timestamp.desc())
+            .first()
+        )
+
+        if existing:
+            existing.status = status
+            existing.error_type = error_type
+            existing.error_message = error_message or existing.error_message
+            existing.prompts_count = prompts_total
+            existing.successful_count = successful
+            existing.failed_count = failed
+            existing.duration_seconds = _safe_int(request.duration_seconds, 0)
+        else:
+            db.add(
+                ExtensionLog(
+                    user_id=user.id,
+                    session_id=request.session_id,
+                    status=status,
+                    error_type=error_type,
+                    error_message=error_message,
+                    prompts_count=prompts_total,
+                    successful_count=successful,
+                    failed_count=failed,
+                    duration_seconds=_safe_int(request.duration_seconds, 0),
+                )
+            )
+
+        db.commit()
+    except Exception:
+        # Fail-open: логирование не должно ломать работу расширения
+        try:
+            db.rollback()
+        except Exception:
+            pass
     
     return LogUsageResponse(
         session_id=request.session_id,

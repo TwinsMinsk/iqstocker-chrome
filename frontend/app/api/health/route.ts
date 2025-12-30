@@ -9,6 +9,9 @@ export async function GET() {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
+    // Помогает быстро понять, какой именно коммит сейчас задеплоен на Railway/CI
+    // Railway: RAILWAY_GIT_COMMIT_SHA, GitHub Actions: GITHUB_SHA
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GITHUB_SHA || null,
     api: {
       url: process.env.NEXT_PUBLIC_API_URL,
       reachable: false,

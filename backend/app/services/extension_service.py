@@ -11,11 +11,16 @@ import hashlib
 import hmac
 import json
 import asyncio
+import logging
+from uuid import UUID as UUIDType
 
 from app.models.license_key import LicenseKey
 from app.models.subscription import Subscription
 from app.models.user import User
+from app.models.extension_log import ExtensionLog
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ExtensionService:
@@ -360,8 +365,107 @@ class ExtensionService:
                 "message": "Subscription not found"
             }
 
+        def _safe_int(v, default: int = 0) -> int:
+            try:
+                return int(v)
+            except Exception:
+                return default
+
+        def _status_from_counts(total_planned: int, sent: int, errors: int) -> str:
+            """
+            Нормализуем статус для ExtensionLog.
+            Важно: мы НЕ храним тексты промптов, только метаданные сессии.
+            """
+            total_planned = max(0, _safe_int(total_planned))
+            sent = max(0, _safe_int(sent))
+            errors = max(0, _safe_int(errors))
+
+            if sent == 0 and errors == 0:
+                return "paused"
+            if sent == 0 and errors > 0:
+                return "error"
+            # Сессия финализирована: если дошли сюда — считаем её завершённой
+            if errors == 0:
+                return "success" if (total_planned > 0 and sent >= total_planned) else "completed"
+            return "completed"
+
+        def _ensure_extension_log() -> None:
+            """
+            Fail-open логирование: ошибки записи логов не должны ломать финализацию сессии.
+
+            Создаём 1 запись на 1 session_token (используем его как session_id).
+            Если запись уже есть — обновляем метрики (на случай повторного finalize или частичных данных).
+            """
+            try:
+                total_planned = _safe_int(session_data.get("prompts_count", 0))
+                sent = _safe_int(prompts_sent, 0)
+                errors = _safe_int(errors_count, 0)
+                status = _status_from_counts(total_planned, sent, errors)
+
+                # Приводим user_id к правильному типу (UUID для PostgreSQL, str для SQLite)
+                raw_user_id = session_data.get("user_id")
+                if not raw_user_id:
+                    return
+                user_id_for_db = raw_user_id if settings.USE_SQLITE else UUIDType(str(raw_user_id))
+
+                existing = (
+                    self.db.query(ExtensionLog)
+                    .filter(ExtensionLog.session_id == session_token)
+                    .order_by(ExtensionLog.timestamp.desc())
+                    .first()
+                )
+
+                # Минимально полезная диагностическая строка (без промптов!)
+                diag = None
+                if errors > 0:
+                    diag = f"errors_count={errors}; prompts_sent={sent}; planned={total_planned}"
+
+                if existing:
+                    existing.user_id = user_id_for_db
+                    existing.status = status
+                    existing.prompts_count = total_planned
+                    existing.successful_count = sent
+                    existing.failed_count = errors
+                    existing.duration_seconds = duration_seconds
+                    # Не затираем error_type, если он уже был проставлен где-то более детально
+                    if not existing.error_type and errors > 0:
+                        existing.error_type = "unknown"
+                    if not existing.error_message and diag:
+                        existing.error_message = diag
+                else:
+                    self.db.add(
+                        ExtensionLog(
+                            user_id=user_id_for_db,
+                            session_id=session_token,
+                            status=status,
+                            error_type="unknown" if errors > 0 else None,
+                            error_message=diag,
+                            prompts_count=total_planned,
+                            successful_count=sent,
+                            failed_count=errors,
+                            duration_seconds=duration_seconds,
+                        )
+                    )
+            except Exception as e:
+                # Никогда не блокируем finalize-session из-за логов
+                logger.warning(f"Failed to write ExtensionLog for session {session_token}: {e}")
+                try:
+                    self.db.rollback()
+                except Exception:
+                    pass
+
         # Идемпотентность: если сессия уже финализирована — возвращаем стабильный ответ
         if session_data.get("is_finalized"):
+            # Если по какой-то причине лог не записался ранее (например, commit упал),
+            # пробуем создать/обновить лог прямо сейчас (fail-open).
+            _ensure_extension_log()
+            try:
+                self.db.commit()
+            except Exception:
+                try:
+                    self.db.rollback()
+                except Exception:
+                    pass
             credits_deducted = int(session_data.get("credits_deducted", 0) or 0)
             return {
                 "success": True,
@@ -493,6 +597,8 @@ class ExtensionService:
         # Коммитим изменения в БД только после успешного обновления Redis
         # Если commit упадет - Redis уже помечен, при повторном вызове будет idempotency check
         try:
+            # Логируем результат сессии в extension_logs (fail-open)
+            _ensure_extension_log()
             self.db.commit()
         except Exception as db_error:
             # Если БД commit упал, Redis уже помечен как finalized

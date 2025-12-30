@@ -56,6 +56,10 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
         return 'bg-red-100 text-red-800';
       case 'invalid_prompt':
         return 'bg-blue-100 text-blue-800';
+      case 'discord_error':
+        return 'bg-purple-100 text-purple-800';
+      case 'unknown':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -70,6 +74,10 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
         return 'Ошибка сети';
       case 'invalid_prompt':
         return 'Неверный промпт';
+      case 'discord_error':
+        return 'Ошибка Discord';
+      case 'unknown':
+        return 'Неизвестно';
       default:
         return errorType;
     }
