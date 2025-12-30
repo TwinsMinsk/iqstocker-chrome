@@ -83,6 +83,14 @@ class TransactionResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_id_to_string(cls, v):
+        """Конвертировать UUID в строку"""
+        if v is not None:
+            return str(v)
+        return v
+    
     @field_validator('amount')
     @classmethod
     def validate_amount(cls, v: Decimal) -> Decimal:
