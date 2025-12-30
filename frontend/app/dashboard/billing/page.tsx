@@ -15,7 +15,7 @@ const DEFAULT_PLANS: Plan[] = [
 ];
 
 export default function BillingPage() {
-  const { isAuthenticated, user, fetchUser } = useAuthStore();
+  const { isAuthenticated, user, fetchUser, isHydrated } = useAuthStore();
   const router = useRouter();
   const [plans, setPlans] = useState<Plan[]>(DEFAULT_PLANS); // Сразу ставим дефолтные
   const [loading, setLoading] = useState(true);
@@ -24,6 +24,8 @@ export default function BillingPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>('credit_500'); // Дефолтный выбор
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push('/login');
       return;
@@ -31,7 +33,7 @@ export default function BillingPage() {
 
     loadPlans();
     fetchUser(); // Обновляем данные пользователя (баланс)
-  }, [isAuthenticated, router, fetchUser]);
+  }, [isAuthenticated, router, fetchUser, isHydrated]);
 
   const loadPlans = async () => {
     try {
@@ -72,7 +74,7 @@ export default function BillingPage() {
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId) || plans[0];
 
-  if (!isAuthenticated) {
+  if (!isHydrated || !isAuthenticated) {
     return null; // Ждем редиректа
   }
 

@@ -10,10 +10,13 @@ import { ExtensionDownload } from '@/components/dashboard/ExtensionDownload';
 import PromoCodeInput from '@/components/dashboard/PromoCodeInput';
 
 export default function DashboardPage() {
-  const { isAuthenticated, fetchUser, user, accessToken } = useAuthStore();
+  const { isAuthenticated, fetchUser, user, accessToken, isHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
+    // Ждем окончания гидратации хранилища
+    if (!isHydrated) return;
+
     // Если есть токен, но пользователь не загружен, загружаем его
     if (accessToken && !user) {
       fetchUser();
@@ -30,9 +33,9 @@ export default function DashboardPage() {
     if (isAuthenticated && !user) {
       fetchUser();
     }
-  }, [isAuthenticated, accessToken, user, router, fetchUser]);
+  }, [isAuthenticated, accessToken, user, router, fetchUser, isHydrated]);
 
-  if (!isAuthenticated) {
+  if (!isHydrated || !isAuthenticated) {
     return null;
   }
 

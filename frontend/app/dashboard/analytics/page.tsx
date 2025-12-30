@@ -16,12 +16,14 @@ interface UsageStats {
 }
 
 export default function AnalyticsPage() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isHydrated } = useAuthStore();
   const router = useRouter();
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push('/login');
       return;
@@ -46,9 +48,9 @@ export default function AnalyticsPage() {
       });
       setLoading(false);
     }, 500);
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, isHydrated]);
 
-  if (!isAuthenticated || loading) {
+  if (!isHydrated || !isAuthenticated || loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[400px]">

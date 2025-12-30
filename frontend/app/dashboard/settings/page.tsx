@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import api from '@/services/api/client';
 
 export default function SettingsPage() {
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user, logout, isHydrated } = useAuthStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push('/login');
       return;
@@ -28,7 +30,7 @@ export default function SettingsPage() {
     if (user?.email) {
       setEmail(user.email);
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isHydrated]);
 
   const handleUpdateEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +107,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (!isAuthenticated) {
+  if (!isHydrated || !isAuthenticated) {
     return null;
   }
 

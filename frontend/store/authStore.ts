@@ -13,6 +13,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isHydrated: boolean;
   error: string | null;
 
   // Actions
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: null,
         isAuthenticated: false,
         isLoading: false,
+        isHydrated: false,
         error: null,
 
         setTokens: (tokens: TokenResponse) => {
@@ -190,11 +192,14 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state && state.accessToken && state.refreshToken) {
-          // Восстанавливаем состояние авторизации после гидратации
-          state.isAuthenticated = true;
-          apiClient.setToken(state.accessToken);
-          apiClient.setRefreshToken(state.refreshToken);
+        if (state) {
+          state.isHydrated = true;
+          if (state.accessToken && state.refreshToken) {
+            // Восстанавливаем состояние авторизации после гидратации
+            state.isAuthenticated = true;
+            apiClient.setToken(state.accessToken);
+            apiClient.setRefreshToken(state.refreshToken);
+          }
         }
       },
     }

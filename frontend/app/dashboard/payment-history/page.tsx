@@ -17,19 +17,21 @@ interface Transaction {
 }
 
 export default function PaymentHistoryPage() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isHydrated } = useAuthStore();
   const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
 
     loadTransactions();
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, isHydrated]);
 
   const loadTransactions = async () => {
     try {
@@ -75,7 +77,7 @@ export default function PaymentHistoryPage() {
     });
   };
 
-  if (!isAuthenticated || loading) {
+  if (!isHydrated || !isAuthenticated || loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[400px]">

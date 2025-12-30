@@ -300,10 +300,10 @@ class AdminService:
                 timestamp=log.timestamp
             ))
         
-            return AdminLogListResponse(
-                total=total,
-                logs=log_items
-            )
+        return AdminLogListResponse(
+            total=total,
+            logs=log_items
+        )
     
     @staticmethod
     def reset_user_password(

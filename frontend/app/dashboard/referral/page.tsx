@@ -9,17 +9,19 @@ export default function ReferralPage() {
   const [stats, setStats] = useState<ReferralStatsResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, isHydrated } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
 
     fetchStats();
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, isHydrated]);
 
   const fetchStats = async () => {
     try {
@@ -51,7 +53,7 @@ export default function ReferralPage() {
     }
   };
 
-  if (!isAuthenticated) {
+  if (!isHydrated || !isAuthenticated) {
     return null;
   }
 
