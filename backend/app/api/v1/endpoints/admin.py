@@ -5,7 +5,7 @@ GET /admin/users, PATCH /admin/users/{id}, GET /admin/logs
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from pydantic import BaseModel, Field
 
 from app.db.session import get_db
@@ -160,10 +160,10 @@ class PromoResponse(BaseModel):
     credit_amount: int
     max_uses: Optional[int]
     current_uses: int
-    expires_at: Optional[str]
+    expires_at: Optional[datetime]
     is_active: bool
     description: Optional[str]
-    created_at: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -187,7 +187,6 @@ async def create_promocode(
     db: Session = Depends(get_db)
 ):
     """Создать новый промокод"""
-    from datetime import datetime
     
     expires_at = None
     if request.expires_at:
