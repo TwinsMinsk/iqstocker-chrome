@@ -30,12 +30,6 @@ async def redeem_promo(
     db: Session = Depends(get_db)
 ):
     """Активировать промокод для текущего пользователя"""
-    # Проверка блокировки пользователя
-    if user.is_blocked:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Ваш аккаунт заблокирован. Активация промокодов недоступна."
-        )
     
     credits, error = promo_service.redeem_promo(
         db=db,
