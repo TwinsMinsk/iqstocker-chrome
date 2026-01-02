@@ -20,7 +20,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-4">Обзор системы</h2>
+        <h2 className="text-2xl font-bold mb-4 text-gray-900">Обзор системы</h2>
       </div>
 
       {hasError && (
@@ -33,21 +33,21 @@ export default function AdminPage() {
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Всего пользователей</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Всего пользователей</h3>
           <p className="text-3xl font-bold text-blue-600">
             {usersData?.total || 0}
           </p>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Всего логов</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Всего логов</h3>
           <p className="text-3xl font-bold text-green-600">
             {logsData?.total || 0}
           </p>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Активных сессий</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Активных сессий</h3>
           <p className="text-3xl font-bold text-purple-600">
             {logsData?.logs.filter(log => log.status === 'success' || log.status === 'completed').length || 0}
           </p>
@@ -57,7 +57,7 @@ export default function AdminPage() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Последние пользователи</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Последние пользователи</h3>
             <Link
               href="/admin/users"
               className="text-sm text-blue-600 hover:text-blue-800"
@@ -90,7 +90,7 @@ export default function AdminPage() {
 
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Последние логи (20 записей)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Последние логи (20 записей)</h3>
           </div>
           <div className="space-y-3">
             {logsData?.logs.map((log) => (

@@ -82,7 +82,7 @@ export function UserTable({
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-xl font-semibold">Пользователи</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Пользователи</h2>
         <p className="text-sm text-gray-600 mt-1">
           Всего: {data?.total || 0} пользователей
         </p>
@@ -142,7 +142,7 @@ export function UserTable({
                       onChange={(e) =>
                         setEditForm({ ...editForm, balance: parseInt(e.target.value) })
                       }
-                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-bold"
                     />
                   ) : (
                     <span className="text-sm text-gray-900">{user.balance}</span>

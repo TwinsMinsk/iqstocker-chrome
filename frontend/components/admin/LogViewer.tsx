@@ -110,7 +110,7 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Логи расширения</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Логи расширения</h2>
           <p className="text-sm text-gray-600 mt-1">
             Всего: {data?.total || 0} записей
           </p>
@@ -120,7 +120,7 @@ export function LogViewer({ userId, status, errorType }: LogViewerProps) {
           <select
             value={limit}
             onChange={(e) => setLimit(parseInt(e.target.value))}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-900 font-semibold"
           >
             <option value={50}>50</option>
             <option value={100}>100</option>

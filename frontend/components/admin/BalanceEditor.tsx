@@ -29,7 +29,7 @@ export function BalanceEditor({ userId, currentBalance, onSuccess }: BalanceEdit
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-6">
-      <h3 className="text-lg font-semibold mb-4">Редактировать баланс</h3>
+      <h3 className="text-lg font-semibold mb-4 text-gray-900">Редактировать баланс</h3>
       
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -40,7 +40,7 @@ export function BalanceEditor({ userId, currentBalance, onSuccess }: BalanceEdit
           value={balance}
           onChange={(e) => setBalance(parseInt(e.target.value) || 0)}
           min="0"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-bold"
           required
         />
       </div>

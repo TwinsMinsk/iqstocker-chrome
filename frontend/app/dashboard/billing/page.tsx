@@ -87,10 +87,6 @@ export default function BillingPage() {
       ) : (
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-8">
-              Забудьте про ежемесячные подписки
-            </h2>
-            
             <div className="inline-block text-left space-y-4 mb-16">
               {[
                 'Покупайте столько кредитов, сколько Вам нужно',

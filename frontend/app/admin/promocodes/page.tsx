@@ -85,7 +85,7 @@ export default function AdminPromoCodesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Управление промокодами</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Управление промокодами</h2>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -103,7 +103,7 @@ export default function AdminPromoCodesPage() {
       {/* Форма создания */}
       {showCreateForm && (
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Создать новый промокод</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Создать новый промокод</h3>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -114,7 +114,7 @@ export default function AdminPromoCodesPage() {
                   type="text"
                   name="code"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
                   placeholder="WELCOME2024"
                 />
               </div>
@@ -127,7 +127,7 @@ export default function AdminPromoCodesPage() {
                   name="credit_amount"
                   required
                   min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
                   placeholder="100"
                 />
               </div>
@@ -139,7 +139,7 @@ export default function AdminPromoCodesPage() {
                   type="number"
                   name="max_uses"
                   min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
                   placeholder="100"
                 />
               </div>
@@ -150,7 +150,7 @@ export default function AdminPromoCodesPage() {
                 <input
                   type="datetime-local"
                   name="expires_at"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
                 />
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function AdminPromoCodesPage() {
               <textarea
                 name="description"
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
                 placeholder="Описание промокода для админки"
               />
             </div>
@@ -280,7 +280,7 @@ export default function AdminPromoCodesPage() {
 
       {/* Реферальные награды */}
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Реферальные награды по тарифам</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-900">Реферальные награды по тарифам</h3>
         <p className="text-sm text-gray-600 mb-4">
           Награда начисляется пригласившему после успешной оплаты рефералом (идемпотентно по payment_id).
         </p>
@@ -353,7 +353,7 @@ function ReferralConfigRow({
           min={0}
           value={reward}
           onChange={(e) => setReward(parseInt(e.target.value || '0', 10))}
-          className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
+          className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 font-bold"
         />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">

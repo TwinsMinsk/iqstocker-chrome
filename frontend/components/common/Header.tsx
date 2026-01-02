@@ -68,13 +68,13 @@ export function Header() {
                 )}
                 <Link
                   href="/dashboard"
-                  className="hidden sm:block text-xs font-black text-white hover:text-indigo-100 uppercase tracking-widest transition-all border border-indigo-500/40 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600/80 to-indigo-500/80 hover:from-indigo-600 hover:to-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]"
+                  className="hidden sm:block text-[10px] font-black text-white hover:text-indigo-100 uppercase tracking-widest transition-all border border-indigo-500/40 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600/80 to-indigo-500/80 hover:from-indigo-600 hover:to-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_20px_rgba(79,70,229,0.5)]"
                 >
                   Личный кабинет
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-5 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+                  className="px-4 py-2 bg-red-500/10 text-white border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
                 >
                   Выйти
                 </button>

@@ -77,7 +77,7 @@ export default function AdminBillingPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Биллинг</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Биллинг</h2>
       </div>
 
       {error && (
@@ -91,7 +91,7 @@ export default function AdminBillingPage() {
       ) : (
         <>
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-2">TRIBUTE_WEBHOOK_SECRET</h3>
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">TRIBUTE_WEBHOOK_SECRET</h3>
             <p className="text-sm text-gray-600 mb-4">
               Секрет хранится на backend в БД в зашифрованном виде. Мы не показываем текущее значение — только статус.
             </p>
@@ -111,13 +111,13 @@ export default function AdminBillingPage() {
               type="password"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
               placeholder="Вставьте новый секрет (оставьте пустым, чтобы не менять)"
             />
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Ссылки на оплату (4 пакета)</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Ссылки на оплату (4 пакета)</h3>
             <p className="text-sm text-gray-600 mb-4">
               Эти ссылки используются при создании платежа (BillingService). Для каждого пакета можно задать свою Tribute ссылку.
             </p>
@@ -133,7 +133,7 @@ export default function AdminBillingPage() {
                       type="url"
                       value={links[p.plan_id] ?? ''}
                       onChange={(e) => setLinks({ ...links, [p.plan_id]: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 font-semibold"
                       placeholder="https://tribute.to/...."
                     />
                   </div>
@@ -153,17 +153,17 @@ export default function AdminBillingPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Последние транзакции</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Последние транзакции</h3>
             <TransactionsTable />
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Последние webhook события Tribute</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Последние webhook события Tribute</h3>
             <WebhookEventsTable />
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Проверка webhook подписи (Tribute)</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">Проверка webhook подписи (Tribute)</h3>
             <p className="text-sm text-gray-600 mb-4">
               Tribute подписывает заголовок <span className="font-mono">trbt-signature</span> как HMAC-SHA256 от точного
               request body. Док: https://wiki.tribute.tg/for-content-creators/api-documentation/webhooks
@@ -207,7 +207,7 @@ export default function AdminBillingPage() {
               value={verifyRawBody}
               onChange={(e) => setVerifyRawBody(e.target.value)}
               rows={8}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-xs"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-xs text-gray-900 font-semibold"
               placeholder='{"name":"new_subscription",...}'
             />
 
@@ -215,7 +215,7 @@ export default function AdminBillingPage() {
             <input
               value={verifySignature}
               onChange={(e) => setVerifySignature(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-xs"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-xs text-gray-900 font-semibold"
               placeholder="hex hmac"
             />
           </div>

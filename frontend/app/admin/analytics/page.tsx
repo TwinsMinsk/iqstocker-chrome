@@ -54,14 +54,14 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">Аналитика</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Аналитика</h2>
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-700">Период:</label>
             <select
               value={isCustomDate ? 'custom' : days}
               onChange={(e) => handlePeriodChange(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
             >
               <option value={7}>7 дней</option>
               <option value={30}>30 дней</option>
@@ -78,14 +78,14 @@ export default function AdminAnalyticsPage() {
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-900 font-semibold"
               />
               <span className="text-gray-500">-</span>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+                className="px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-900 font-semibold"
               />
             </div>
           )}
@@ -248,7 +248,7 @@ export default function AdminAnalyticsPage() {
           {/* Дополнительная статистика */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Реферальная программа</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Реферальная программа</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Новых рефералов</span>
@@ -258,7 +258,7 @@ export default function AdminAnalyticsPage() {
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Период анализа</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Период анализа</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Начало:</span>
