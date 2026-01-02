@@ -29,7 +29,7 @@ export function Footer() {
                 <li>
                   <button 
                     onClick={() => setIsPrivacyModalOpen(true)}
-                    className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                    className="text-white/40 hover:text-white transition-colors cursor-pointer uppercase tracking-widest"
                   >
                     Политика конфиденциальности
                   </button>
