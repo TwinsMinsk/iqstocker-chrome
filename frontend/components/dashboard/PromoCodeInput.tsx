@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { promoAPI } from '@/services/api/promo';
 import { useAuthStore } from '@/store/authStore';
 
@@ -10,6 +12,8 @@ export default function PromoCodeInput() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const { fetchUser } = useAuthStore();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,8 +28,15 @@ export default function PromoCodeInput() {
       setStatus('success');
       setMessage(response.message || `Успешно! Начислено ${response.credits_added} кредитов`);
       setCode('');
+      
       // Обновляем баланс пользователя
-      fetchUser();
+      await fetchUser();
+      
+      // Инвалидируем кэш React Query для обновления баланса в BalanceCard
+      await queryClient.invalidateQueries({ queryKey: ['subscription'] });
+      
+      // Обновляем страницу для отображения нового баланса
+      router.refresh();
       
       // Сбрасываем статус через некоторое время
       setTimeout(() => {

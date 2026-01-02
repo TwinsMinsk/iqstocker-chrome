@@ -172,7 +172,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Мгновенный старт</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Никаких сложных настроек. Устанавливаете расширение - и вы готовы генерировать шедевры.
+                Никаких сложных настроек.<br />
+                Устанавливаете расширение - и вы готовы генерировать шедевры.
               </p>
             </div>
 
@@ -198,7 +199,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Экономия времени</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Загрузите свои промты и идите пить кофе. Все остальное система сделает за вас.
+                Загрузите свои промты и идите пить кофе.<br />
+                Все остальное система сделает за вас.
               </p>
             </div>
           </div>
@@ -245,7 +247,7 @@ export default function HomePage() {
                   Выберите сколько кредитов Вам нужно
                 </h3>
                 <p className="text-white/60 text-xs mb-10">
-                  1 кредит = 1 отправленный промт
+                  1 кредит = 1 отправленный промпт
                 </p>
 
                 {/* Credit Buttons Grid */}
@@ -290,7 +292,8 @@ export default function HomePage() {
                 </Link>
                 
                 <p className="mt-6 text-[10px] text-white/20 font-bold uppercase tracking-widest text-center">
-                  Нажимая кнопку «Купить кредиты», вы соглашаетесь с{' '}
+                  Нажимая кнопку «Купить кредиты», вы соглашаетесь<br />
+                  с{' '}
                   <Link href="/offer" className="text-white/40 hover:text-white/60 underline">
                     условиями Оферты
                   </Link>

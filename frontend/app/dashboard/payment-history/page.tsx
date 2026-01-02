@@ -103,13 +103,13 @@ export default function PaymentHistoryPage() {
             Транзакции не найдены
           </h3>
           <p className="text-white/30 mb-10 max-w-sm mx-auto font-light leading-relaxed">
-            Ваша история платежей пуста. Купите тариф, чтобы начать автоматизацию.
+            Купите кредиты, чтобы начать автоматизацию.
           </p>
           <Link
             href="/dashboard/billing"
             className="inline-block px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-[0_0_30px_rgba(79,70,229,0.3)]"
           >
-            Купить тариф
+            Купить кредиты
           </Link>
         </div>
       ) : (

@@ -90,8 +90,8 @@ export default function ReferralPage() {
         <header className="mb-12">
           <h1 className="text-xs font-black tracking-[0.3em] text-indigo-500 uppercase mb-2">Реферальная программа</h1>
           <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-            ПРИГЛАШАЙ ДРУЗЕЙ<br/>
-            <span className="text-white/40">И ПОЛУЧАЙ БОНУСЫ</span>
+            Получайте <span className="text-indigo-400">20%</span><br/>
+            от покупок ваших друзей
           </h2>
         </header>
 
@@ -118,7 +118,7 @@ export default function ReferralPage() {
                 </button>
               </div>
               <p className="text-white/40 text-xs font-medium uppercase tracking-widest">
-                Поделитесь ссылкой с друзьями и получайте бонусные кредиты за их покупки!
+                Поделитесь ссылкой с друзьями и получайте 20% с каждой их покупки!
               </p>
             </>
           ) : (
@@ -156,7 +156,7 @@ export default function ReferralPage() {
               </div>
               <div>
                 <p className="text-white/80 font-medium mb-1">Поделитесь своей ссылкой</p>
-                <p className="text-white/40 text-sm">Скопируйте ссылку выше и отправьте друзьям</p>
+                <p className="text-white/40 text-sm">Скопируйте ссылку выше и отправьте её друзьям</p>
               </div>
             </div>
             <div className="flex items-start gap-4">
@@ -174,9 +174,31 @@ export default function ReferralPage() {
               </div>
               <div>
                 <p className="text-white/80 font-medium mb-1">Получайте бонусы</p>
-                <p className="text-white/40 text-sm">Когда друг покупает кредиты, вы получаете бонусные кредиты на свой баланс</p>
+                <p className="text-white/40 text-sm">Когда друг покупает кредиты, вы получаете <span className="text-indigo-400">20% от каждой его покупки</span> в виде бонусных кредитов на свой баланс. Реферал закрепляется за вами бессрочно</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Пример */}
+        <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-xl mt-8">
+          <h3 className="text-lg font-black uppercase tracking-[0.2em] text-white/80 mb-6">Пример</h3>
+          <div className="space-y-4 text-white/80 text-sm leading-relaxed">
+            <p>
+              Вы поделились своей ссылкой с другом.<br/>
+              Друг зарегистрировался и купил 5000 кредитов.
+            </p>
+            <p>
+              На ваш баланс сразу зачисляется 1000 бонусных кредитов - это обычные кредиты, которыми можно пользоваться без ограничений.
+            </p>
+            <p>
+              Дальше система работает автоматически:<br/>
+              каждая новая покупка этого друга приносит вам <span className="text-indigo-400">20% от купленных им кредитов</span>.
+            </p>
+            <p>
+              Ограничений по времени нет.<br/>
+              Друг остаётся вашим рефералом бессрочно, и бонусы начисляются всё время, пока он пользуется сервисом и покупает кредиты.
+            </p>
           </div>
         </div>
       </div>
