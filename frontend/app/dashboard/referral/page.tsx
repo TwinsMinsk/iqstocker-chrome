@@ -183,7 +183,7 @@ export default function ReferralPage() {
         {/* Пример */}
         <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-xl mt-8">
           <h3 className="text-lg font-black uppercase tracking-[0.2em] text-white/80 mb-6">Пример</h3>
-          <div className="space-y-4 text-white/80 text-sm leading-relaxed">
+          <div className="space-y-4 text-white/40 text-sm leading-relaxed">
             <p>
               Вы поделились своей ссылкой с другом.<br/>
               Друг зарегистрировался и купил 5000 кредитов.
