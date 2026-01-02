@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { billingAPI, type Plan } from '@/services/api/billing';
+import { OfferModal } from '@/components/common/OfferModal';
 
 // Дефолтные планы на случай если API не вернет данные
 const DEFAULT_PLANS: Plan[] = [
@@ -20,6 +21,7 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>(DEFAULT_PLANS); // Сразу ставим дефолтные
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>('credit_500'); // Дефолтный выбор
 
@@ -169,9 +171,12 @@ export default function BillingPage() {
                 <p className="mt-6 text-[10px] text-white/20 font-bold uppercase tracking-widest text-center">
                   Нажимая кнопку «Купить кредиты», вы соглашаетесь<br />
                   с{' '}
-                  <Link href="/offer" className="text-white/40 hover:text-white/60 underline">
+                  <button 
+                    onClick={() => setIsOfferModalOpen(true)}
+                    className="text-white/40 hover:text-white/60 underline cursor-pointer"
+                  >
                     условиями Оферты
-                  </Link>
+                  </button>
                 </p>
               </div>
             </div>
@@ -201,6 +206,10 @@ export default function BillingPage() {
           </Link>
         </div>
       </div>
+      <OfferModal 
+        isOpen={isOfferModalOpen} 
+        onClose={() => setIsOfferModalOpen(false)} 
+      />
     </div>
   );
 }

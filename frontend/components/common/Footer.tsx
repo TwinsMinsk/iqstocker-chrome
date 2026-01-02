@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 export function Footer() {
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   return (
     <footer className="bg-[#050505] border-t border-white/5 text-white py-24">
@@ -22,6 +25,14 @@ export function Footer() {
                 <li><Link href="/#features" className="text-white/40 hover:text-white transition-colors">Возможности</Link></li>
                 <li><Link href="/#pricing" className="text-white/40 hover:text-white transition-colors">Тарифы</Link></li>
                 <li><Link href="/#faq" className="text-white/40 hover:text-white transition-colors">FAQ</Link></li>
+                <li>
+                  <button 
+                    onClick={() => setIsPrivacyModalOpen(true)}
+                    className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Политика конфиденциальности
+                  </button>
+                </li>
               </ul>
             </div>
 
@@ -92,5 +103,9 @@ export function Footer() {
           </div>
         </div>
       </footer>
+      <PrivacyPolicyModal 
+        isOpen={isPrivacyModalOpen} 
+        onClose={() => setIsPrivacyModalOpen(false)} 
+      />
   );
 }

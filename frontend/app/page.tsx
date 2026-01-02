@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { OfferModal } from '@/components/common/OfferModal';
 
 // Icon Components with guaranteed sizes
 const IconWrapper = ({ children, className = "", size = 24 }: { children: React.ReactNode, className?: string, size?: number }) => (
@@ -58,6 +59,7 @@ const MinusIcon = ({ size = 24 }: { size?: number }) => (
 
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
 
   const faqs = [
     {
@@ -294,9 +296,12 @@ export default function HomePage() {
                 <p className="mt-6 text-[10px] text-white/20 font-bold uppercase tracking-widest text-center">
                   Нажимая кнопку «Купить кредиты», вы соглашаетесь<br />
                   с{' '}
-                  <Link href="/offer" className="text-white/40 hover:text-white/60 underline">
+                  <button 
+                    onClick={() => setIsOfferModalOpen(true)}
+                    className="text-white/40 hover:text-white/60 underline cursor-pointer"
+                  >
                     условиями Оферты
-                  </Link>
+                  </button>
                 </p>
               </div>
             </div>
@@ -332,6 +337,10 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <OfferModal 
+        isOpen={isOfferModalOpen} 
+        onClose={() => setIsOfferModalOpen(false)} 
+      />
     </div>
   );
 }
