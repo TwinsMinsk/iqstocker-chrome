@@ -6,6 +6,7 @@ from sqlalchemy import or_, desc, func
 from typing import Optional, Tuple, List
 from datetime import datetime
 import logging
+from uuid import uuid4
 
 from app.models.user import User
 from app.models.subscription import Subscription
@@ -178,15 +179,19 @@ class AdminService:
 
                 # ВАЖНО: пишем аудит через credit_transactions.
                 # Админ в UI задаёт "абсолютный" баланс, а в журнале храним delta.
+                # Для каждой операции ручной корректировки генерируем уникальный ID,
+                # чтобы избежать нарушения уникального ограничения при повторных изменениях.
                 delta = target_balance - current_balance
                 if delta != 0:
                     actor = admin_actor_id or "unknown_admin"
+                    # Генерируем уникальный ID для каждой операции корректировки
+                    adjustment_id = str(uuid4())
                     _, err = credit_service.add_credits(
                         db=db,
                         user_id=str(user.id),
                         amount=delta,
                         transaction_type=CreditTransactionType.MANUAL_ADJUSTMENT.value,
-                        related_entity_id=f"admin:{actor}",
+                        related_entity_id=f"admin:{actor}:{adjustment_id}",
                         description=f"Admin manual adjustment to {target_balance} (delta {delta:+d})",
                         commit=False,
                     )
