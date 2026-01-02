@@ -118,7 +118,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Полноценная автоматизация генеринга прямо в вашем браузере.
+            Полноценная автоматизация Midjourney прямо в вашем браузере
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -199,7 +199,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Экономия времени</h3>
               <p className="text-gray-400 leading-relaxed text-sm">
-                Загрузите свои промты и идите пить кофе.<br />
+                Загрузите свои промпты и идите пить кофе.<br />
                 Все остальное система сделает за вас.
               </p>
             </div>
