@@ -175,7 +175,7 @@ export default function BillingPage() {
                     onClick={() => setIsOfferModalOpen(true)}
                     className="text-white/40 hover:text-white/60 underline cursor-pointer"
                   >
-                    условиями Оферты
+                    УСЛОВИЯМИ ОФЕРТЫ
                   </button>
                 </p>
               </div>
