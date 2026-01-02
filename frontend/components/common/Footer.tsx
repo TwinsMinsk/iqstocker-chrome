@@ -42,7 +42,7 @@ export function Footer() {
               <ul className="space-y-4 text-[10px] font-bold uppercase tracking-widest">
                 <li>
                   <a 
-                    href="https://t.me/your_support" 
+                    href="https://t.me/iqstockersupport" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-white/40 hover:text-white transition-colors cursor-pointer"
@@ -57,7 +57,7 @@ export function Footer() {
               <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-8">Наши соц.сети</h4>
               <div className="flex gap-4">
                 <a 
-                  href="https://t.me/your_telegram" 
+                  href="https://t.me/iqstocker" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="transition-transform hover:scale-110"
@@ -68,7 +68,7 @@ export function Footer() {
                   </svg>
                 </a>
                 <a 
-                  href="https://instagram.com/your_instagram" 
+                  href="https://www.instagram.com/iqstocker?igsh=Y2hpczlxMmcwam5x&utm_source=qr" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="transition-transform hover:scale-110"
