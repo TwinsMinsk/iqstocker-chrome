@@ -229,25 +229,28 @@ class AnalyticsService:
         """
         Темп роста пользователей: % изменения новых пользователей к прошлому месяцу.
         """
-        # Текущий месяц
-        current_month_start = start_date
-        current_month_end = end_date
+        # Текущий период
+        current_start_dt = datetime.combine(start_date, datetime.min.time())
+        current_end_dt = datetime.combine(end_date, datetime.max.time())
         
-        # Предыдущий месяц (такой же период, но месяц назад)
+        # Предыдущий период
         days_in_period = (end_date - start_date).days + 1
         prev_month_end = start_date - timedelta(days=1)
         prev_month_start = prev_month_end - timedelta(days=days_in_period - 1)
         
+        prev_start_dt = datetime.combine(prev_month_start, datetime.min.time())
+        prev_end_dt = datetime.combine(prev_month_end, datetime.max.time())
+        
         # Новые пользователи в текущем месяце
         current_new = db.query(func.count(User.id)).filter(
-            cast(User.created_at, Date) >= current_month_start,
-            cast(User.created_at, Date) <= current_month_end
+            User.created_at >= current_start_dt,
+            User.created_at <= current_end_dt
         ).scalar() or 0
         
         # Новые пользователи в предыдущем месяце
         prev_new = db.query(func.count(User.id)).filter(
-            cast(User.created_at, Date) >= prev_month_start,
-            cast(User.created_at, Date) <= prev_month_end
+            User.created_at >= prev_start_dt,
+            User.created_at <= prev_end_dt
         ).scalar() or 0
         
         if prev_new == 0:
@@ -259,73 +262,81 @@ class AnalyticsService:
     @staticmethod
     def get_comprehensive_stats(db: Session, start_date: date, end_date: date) -> dict:
         """
-        Получить все метрики для дашборда (гибридный подход).
+        Получить все метрики для дашборда.
         
-        Returns:
-            Dict со всеми метриками для DashboardStatsResponse
+        Использует Real-time расчет для критически важных метрик (пользователи, деньги, рефералы),
+        чтобы админ видел актуальные данные сразу после действий пользователя.
         """
-        # 1. Быстрые метрики из DailyAnalytics
-        stats = db.query(
-            func.coalesce(func.sum(DailyAnalytics.new_users_count), 0).label('new_users'),
-            func.coalesce(func.sum(DailyAnalytics.revenue_eur), 0).label('revenue'),
+        # Границы периода
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(end_date, datetime.max.time())
+        
+        # 1. Общее количество пользователей (Real-time)
+        total_users = db.query(func.count(User.id)).scalar() or 0
+        
+        # 2. Новые пользователи за период (Real-time)
+        new_users_month = db.query(func.count(User.id)).filter(
+            User.created_at >= start_dt,
+            User.created_at <= end_dt
+        ).scalar() or 0
+        
+        # 3. Новые рефералы за период (Real-time)
+        new_referrals = db.query(func.count(User.id)).filter(
+            User.created_at >= start_dt,
+            User.created_at <= end_dt,
+            User.referred_by_id.isnot(None)
+        ).scalar() or 0
+
+        # 4. Выручка за период (Real-time)
+        total_revenue_eur = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+            Transaction.completed_at >= start_dt,
+            Transaction.completed_at <= end_dt,
+            Transaction.status == 'completed'
+        ).scalar() or 0.0
+        total_revenue_eur = float(total_revenue_eur)
+
+        # 5. Платящие пользователи за период (Real-time)
+        paying_users_month = db.query(func.count(distinct(Transaction.user_id))).filter(
+            Transaction.completed_at >= start_dt,
+            Transaction.completed_at <= end_dt,
+            Transaction.status == 'completed'
+        ).scalar() or 0
+        
+        paying_users_percentage = (paying_users_month / total_users * 100.0) if total_users > 0 else 0.0
+
+        # 6. Остальные метрики (Generations, DAU) берем из DailyAnalytics
+        # (они тяжелые для real-time, но менее критичны для мгновенного обновления)
+        stats_history = db.query(
             func.coalesce(func.sum(DailyAnalytics.total_generations), 0).label('generations'),
-            func.coalesce(func.avg(DailyAnalytics.active_users_dau), 0).label('dau_avg'),
-            func.coalesce(func.sum(DailyAnalytics.new_referrals_count), 0).label('referrals'),
+            func.coalesce(func.avg(DailyAnalytics.active_users_dau), 0).label('dau_avg')
         ).filter(
             DailyAnalytics.date >= start_date,
             DailyAnalytics.date <= end_date
         ).first()
         
-        # 2. Общее количество пользователей
-        total_users = db.query(func.count(User.id)).scalar() or 0
-        
-        # 3. Новые пользователи за месяц
-        new_users_month = int(stats.new_users or 0)
-        
-        # 4. DAU (среднее за период)
-        dau_count = int(stats.dau_avg or 0)
+        total_generations = int(stats_history.generations or 0)
+        dau_count = int(stats_history.dau_avg or 0)
         dau_percentage = (dau_count / total_users * 100.0) if total_users > 0 else 0.0
-        
-        # 5. WAU (считаем "на лету")
+
+        # 7. Сложные метрики (WAU, MAU, LTV, Retention, Growth) - считаются on-the-fly
         wau_count = AnalyticsService.get_wau(db, end_date)
         wau_percentage = (wau_count / total_users * 100.0) if total_users > 0 else 0.0
         
-        # 6. MAU (считаем "на лету")
         mau_count = AnalyticsService.get_mau(db, end_date)
         mau_percentage = (mau_count / total_users * 100.0) if total_users > 0 else 0.0
         
-        # 7. Платящие пользователи за месяц (уникальные)
-        month_start_dt = datetime.combine(start_date, datetime.min.time())
-        month_end_dt = datetime.combine(end_date, datetime.max.time())
+        ltv = AnalyticsService.get_ltv(db)
+        retention_rate = AnalyticsService.get_retention_rate(db, start_date, end_date)
+        growth_rate = AnalyticsService.get_growth_rate(db, start_date, end_date)
         
-        paying_users_month = db.query(func.count(distinct(Transaction.user_id))).filter(
-            Transaction.completed_at >= month_start_dt,
-            Transaction.completed_at <= month_end_dt,
-            Transaction.status == 'completed'
-        ).scalar() or 0
-        
-        paying_users_percentage = (paying_users_month / total_users * 100.0) if total_users > 0 else 0.0
-        
-        # 8. Revenue
-        total_revenue_eur = float(stats.revenue or 0)
-        
-        # 9. AOV (Average Order Value) - средний чек за месяц
+        # 8. AOV (Average Order Value)
         transaction_count = db.query(func.count(Transaction.id)).filter(
-            Transaction.completed_at >= month_start_dt,
-            Transaction.completed_at <= month_end_dt,
+            Transaction.completed_at >= start_dt,
+            Transaction.completed_at <= end_dt,
             Transaction.status == 'completed'
         ).scalar() or 0
         
         average_check = (total_revenue_eur / transaction_count) if transaction_count > 0 else 0.0
-        
-        # 10. LTV (считаем "на лету")
-        ltv = AnalyticsService.get_ltv(db)
-        
-        # 11. Retention (считаем "на лету")
-        retention_rate = AnalyticsService.get_retention_rate(db, start_date, end_date)
-        
-        # 12. Темп роста
-        growth_rate = AnalyticsService.get_growth_rate(db, start_date, end_date)
         
         return {
             "period_start": start_date,
@@ -345,8 +356,8 @@ class AnalyticsService:
             "average_check": round(average_check, 2),
             "ltv": round(ltv, 2),
             "retention_rate": retention_rate,
-            "total_generations": int(stats.generations or 0),
-            "new_referrals": int(stats.referrals or 0),
+            "total_generations": total_generations,
+            "new_referrals": new_referrals,
         }
     
     @staticmethod

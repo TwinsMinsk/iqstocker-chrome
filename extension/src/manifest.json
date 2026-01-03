@@ -1,6 +1,6 @@
 ﻿{
     "manifest_version":  3,
-    "name":  "IQРЎС‚РѕРєРµСЂ Р“РµРЅРµСЂРёРЅРі",
+    "name":  "IQРЎРўРћРљР•Р  Р“Р•РќР•Р РРќР“",
     "version":  "1.0.1",
     "description":  "РђРІС‚РѕРјР°С‚РёР·РёСЂСѓР№ РѕС‚РїСЂР°РІРєСѓ РїСЂРѕРјРїС‚РѕРІ РІ Midjourney С‡РµСЂРµР· Discord",
     "permissions":  [
@@ -17,7 +17,7 @@
                          ],
     "action":  {
                    "default_popup":  "popup.html",
-                   "default_title":  "IQРЎС‚РѕРєРµСЂ Р“РµРЅРµСЂРёРЅРі"
+                   "default_title":  "IQРЎРўРћРљР•Р  Р“Р•РќР•Р РРќР“"
                },
     "background":  {
                        "service_worker":  "service-worker.js"

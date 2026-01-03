@@ -100,7 +100,7 @@ class PaymentService:
         payload = webhook_data.get("payload", {})
         
         # 2. Обработать событие
-        if event_name in ["new_subscription", "payment_received", "donation", "digital_product_purchased"]:
+        if event_name in ["new_subscription", "new_digital_product", "payment_received", "donation", "digital_product_purchased"]:
             return await PaymentService._handle_payment(db, payload, event_name)
         elif event_name == "cancelled_subscription":
             return await PaymentService._handle_cancelled_subscription(db, payload)
@@ -129,9 +129,19 @@ class PaymentService:
             Dict с результатом
         """
         # В разных событиях ID может называться по-разному
-        raw_payment_id = payload.get("period_id") or payload.get("payment_id") or payload.get("id")
+        # period_id - для подписок (subscriptions)
+        # payment_id/id - для общих платежей
+        # product_id - для цифровых товаров (Digital Products)
+        # order_id - для физических заказов (Physical Orders)
+        raw_payment_id = (
+            payload.get("period_id") or 
+            payload.get("payment_id") or 
+            payload.get("product_id") or 
+            payload.get("order_id") or 
+            payload.get("id")
+        )
         if not raw_payment_id:
-            logger.error("Webhook payload missing payment identifier (period_id/payment_id/id)")
+            logger.error("Webhook payload missing payment identifier (period_id/payment_id/product_id/order_id/id)")
             return {"status": "error", "message": "Missing payment id"}
 
         payment_id = str(raw_payment_id)
