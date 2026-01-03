@@ -94,7 +94,10 @@ class AdminService:
             balance = subscription.credits_balance if subscription else 0
             last_active = last_log.timestamp if last_log else None
             is_blocked = not user.is_active
-            referrals_count = len(user.referred_users) if user.referred_users is not None else 0
+            # Подсчет рефералов через запрос к БД (user.referred_users может быть не загружен)
+            referrals_count = db.query(func.count(User.id)).filter(
+                User.referred_by_id == user.id
+            ).scalar() or 0
             
             user_items.append(AdminUserItem(
                 id=str(user.id),
