@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Modal } from '@/components/common/Modal';
 
 export function ExtensionDownload() {
@@ -15,8 +16,10 @@ export function ExtensionDownload() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [versionLoading, setVersionLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     let cancelled = false;
 
     (async () => {
@@ -173,13 +176,16 @@ export function ExtensionDownload() {
           {/* 1. Скачивание и распаковка */}
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">1. Скачивание и распаковка</h4>
-            <div className="flex flex-col gap-4">
-              <p className="leading-relaxed">
-                Нажмите кнопку <span className="text-white font-bold">"Скачать ZIP"</span>.
-              </p>
-              <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center gap-4 flex-wrap">
+                <p className="leading-relaxed">
+                  Нажмите кнопку <span className="text-white font-bold">"Скачать ZIP"</span>.
+                </p>
                 <StepImage src="/instructions/step-1.png" alt="Скриншот 1" />
-                <p className="leading-relaxed text-sm pt-1">
+              </div>
+              
+              <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                <p className="leading-relaxed text-sm flex-1">
                   После загрузки распакуйте архив в любое удобное место на вашем компьютере. <span className="text-indigo-400 font-bold">Важно:</span> не удаляйте эту папку после установки.
                 </p>
                 <StepImage src="/instructions/step-2.png" alt="Скриншот 2" />
@@ -302,10 +308,10 @@ export function ExtensionDownload() {
         </div>
       </Modal>
 
-      {/* Lightbox */}
-      {selectedImage && (
+      {/* Lightbox with Portal for higher Z-index */}
+      {mounted && selectedImage && createPortal(
         <div 
-          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
+          className="fixed inset-0 z-[10000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
           onClick={() => setSelectedImage(null)}
         >
           <img 
@@ -322,7 +328,8 @@ export function ExtensionDownload() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
