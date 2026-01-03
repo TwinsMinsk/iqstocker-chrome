@@ -158,7 +158,7 @@ export default function HomePage() {
                     </div>
                     <div className="space-y-3">
                       <h3 className="text-2xl font-black text-white tracking-tight uppercase drop-shadow-2xl">Смотреть видео</h3>
-                      <p className="text-base text-gray-400 font-medium max-w-xs mx-auto leading-tight">Узнайте как запустить генеринг за 60 секунд</p>
+                      <p className="text-base text-gray-400 font-medium max-w-xs mx-auto leading-tight">Узнайте как пользоваться сервисом за 60 секунд</p>
                     </div>
                   </div>
 

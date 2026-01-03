@@ -177,15 +177,15 @@ export function ExtensionDownload() {
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">1. Скачивание и распаковка</h4>
             <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex flex-col gap-3">
                 <p className="leading-relaxed">
                   Нажмите кнопку <span className="text-white font-bold">"Скачать ZIP"</span>.
                 </p>
                 <StepImage src="/instructions/step-1.png" alt="Скриншот 1" />
               </div>
               
-              <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
-                <p className="leading-relaxed text-sm flex-1">
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">
                   После загрузки распакуйте архив в любое удобное место на вашем компьютере. <span className="text-indigo-400 font-bold">Важно:</span> не удаляйте эту папку после установки.
                 </p>
                 <StepImage src="/instructions/step-2.png" alt="Скриншот 2" />
@@ -196,29 +196,20 @@ export function ExtensionDownload() {
           {/* 2. Установка в Chrome */}
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">2. Установка в Chrome</h4>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">a</div>
-                <div className="flex-1">
-                  <p className="mb-2">Откройте браузер Chrome (если у вас его нет - скачайте и установите его) и перейдите по адресу <code className="bg-white/5 px-2 py-1 rounded text-indigo-300">chrome://extensions/</code> (для этого скопируйте адрес и вставьте его в браузер).</p>
-                  <StepImage src="/instructions/step-3.png" alt="Скриншот 3" />
-                </div>
+            <div className="space-y-6">
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">Откройте браузер Chrome (если у вас его нет - скачайте и установите его) и перейдите по адресу <code className="bg-white/5 px-2 py-1 rounded text-indigo-300">chrome://extensions/</code> (для этого скопируйте адрес и вставьте его в браузер).</p>
+                <StepImage src="/instructions/step-3.png" alt="Скриншот 3" />
               </div>
               
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">b</div>
-                <div className="flex-1">
-                  <p className="mb-2">Включите <span className="text-white font-bold">"Режим разработчика"</span> (Developer mode) в правом верхнем углу.</p>
-                  <StepImage src="/instructions/step-4.png" alt="Скриншот 4" />
-                </div>
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">Включите <span className="text-white font-bold">"Режим разработчика"</span> (Developer mode) в правом верхнем углу.</p>
+                <StepImage src="/instructions/step-4.png" alt="Скриншот 4" />
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">c</div>
-                <div className="flex-1">
-                  <p className="mb-2">Нажмите <span className="text-white font-bold">"Загрузить распакованное расширение"</span> (Load unpacked) и выберите папку, в которую вы распаковали архив.</p>
-                  <StepImage src="/instructions/step-5.png" alt="Скриншот 5" />
-                </div>
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">Нажмите <span className="text-white font-bold">"Загрузить распакованное расширение"</span> (Load unpacked) и выберите папку, в которую вы распаковали архив.</p>
+                <StepImage src="/instructions/step-5.png" alt="Скриншот 5" />
               </div>
             </div>
           </div>
@@ -290,18 +281,18 @@ export function ExtensionDownload() {
           
           <div className="h-px bg-white/10 my-8"></div>
 
-          <div className="space-y-4 text-sm text-white/50">
-             <p>
+          <div className="space-y-4">
+             <p className="leading-relaxed">
                Чтобы запустить новый генеринг удалите старые промпты из расширения и вставьте на их место новые → нажмите кнопку <span className="text-white/70 font-bold">форматировать</span> → нажмите кнопку <span className="text-white/70 font-bold">"Авто-поиск"</span> → проверьте интервал.
                Нажмите <span className="text-white/70 font-bold">"Start"</span>, и автогенеринг должен будет начаться.
              </p>
-             <p>
+             <p className="leading-relaxed">
                Баланс ваших кредитов вы в любое время можете посмотреть в своем личном кабинете.
              </p>
-             <p>
+             <p className="leading-relaxed">
                При возникновении любых вопросов, пожалуйста, пишите в нашу техподдержку <a href="https://t.me/iqstockersupport" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">@iqstockersupport</a>
              </p>
-             <p className="text-center pt-4 text-white/30 font-bold uppercase tracking-widest">
+             <p className="text-center pt-4 text-white/30 font-bold uppercase tracking-widest text-sm">
                Спасибо и приятного вам использования!
              </p>
           </div>
