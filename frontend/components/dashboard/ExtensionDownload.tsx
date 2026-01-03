@@ -237,10 +237,13 @@ export function ExtensionDownload() {
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">4. Работа с Discord</h4>
             <div className="space-y-6">
-              <p className="leading-relaxed">
-                Откройте Discord в браузере Chrome, перейдите в чат с Midjourney, куда отправляются промпты.<br/>
-                Откройте расширение и вставьте свои промпты, нажмите кнопку <span className="text-white font-bold">"Форматировать"</span>.
-              </p>
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">
+                  Откройте Discord в браузере Chrome, перейдите в чат с Midjourney, куда отправляются промпты.<br/>
+                  Откройте расширение и вставьте свои промпты, нажмите кнопку <span className="text-white font-bold">"Форматировать"</span>.
+                </p>
+                <StepImage src="/instructions/step-8.png" alt="Скриншот 8" />
+              </div>
 
               <div className="flex flex-col gap-2">
                  <p className="leading-relaxed">
@@ -283,7 +286,7 @@ export function ExtensionDownload() {
 
           <div className="space-y-4">
              <p className="leading-relaxed">
-               Чтобы запустить новый генеринг удалите старые промпты из расширения и вставьте на их место новые → нажмите кнопку <span className="text-white/70 font-bold">форматировать</span> → нажмите кнопку <span className="text-white/70 font-bold">"Авто-поиск"</span> → проверьте интервал.
+               Чтобы запустить новый генеринг удалите старые промпты из расширения и вставьте на их место новые → нажмите кнопку <span className="text-white/70 font-bold">форматировать</span> → нажмите кнопку <span className="text-white/70 font-bold">"Авто-поиск"</span> → проверьте интервал.<br/>
                Нажмите <span className="text-white/70 font-bold">"Start"</span>, и автогенеринг должен будет начаться.
              </p>
              <p className="leading-relaxed">
