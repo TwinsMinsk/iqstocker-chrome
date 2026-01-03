@@ -1,8 +1,8 @@
-{
+﻿{
     "manifest_version":  3,
-    "name":  "IQСтокер Генеринг",
+    "name":  "IQРЎС‚РѕРєРµСЂ Р“РµРЅРµСЂРёРЅРі",
     "version":  "1.0.1",
-    "description":  "Автоматизируй отправку промптов в Midjourney через Discord",
+    "description":  "РђРІС‚РѕРјР°С‚РёР·РёСЂСѓР№ РѕС‚РїСЂР°РІРєСѓ РїСЂРѕРјРїС‚РѕРІ РІ Midjourney С‡РµСЂРµР· Discord",
     "permissions":  [
                         "storage",
                         "tabs",
@@ -17,7 +17,7 @@
                          ],
     "action":  {
                    "default_popup":  "popup.html",
-                   "default_title":  "IQСтокер Генеринг"
+                   "default_title":  "IQРЎС‚РѕРєРµСЂ Р“РµРЅРµСЂРёРЅРі"
                },
     "background":  {
                        "service_worker":  "service-worker.js"
