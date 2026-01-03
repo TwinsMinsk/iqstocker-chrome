@@ -60,6 +60,7 @@ const MinusIcon = ({ size = 24 }: { size?: number }) => (
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   const faqs = [
     {
@@ -138,25 +139,52 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Dashboard Preview */}
+          {/* Dashboard Preview / Video Section */}
           <div id="features" className="mt-20 p-2 bg-white/5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-sm max-w-4xl mx-auto">
-            <div className="aspect-[16/9] bg-[#0f0f0f] rounded-xl flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 opacity-50" />
-              
-              <div className="z-10 flex flex-col items-center gap-6 p-8 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-md shadow-2xl group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-white tracking-tight">Смотреть видео</h3>
-                  <p className="text-sm text-gray-400">Узнайте как запустить генеринг за 60 секунд</p>
-                </div>
-              </div>
+            <div className="aspect-[16/9] bg-[#0f0f0f] rounded-xl flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group shadow-inner">
+              {!isVideoPlaying ? (
+                <div 
+                  className="absolute inset-0 z-20 cursor-pointer flex flex-col items-center justify-center transition-all duration-500 hover:bg-black/20"
+                  onClick={() => setIsVideoPlaying(true)}
+                >
+                  {/* Overlay background */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 opacity-50" />
+                  
+                  <div className="z-10 flex flex-col items-center gap-6 p-8 text-center transition-all duration-500 group-hover:scale-110">
+                    <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-md shadow-[0_0_50px_rgba(79,70,229,0.3)] group-hover:bg-indigo-600 group-hover:border-indigo-400 group-hover:shadow-[0_0_70px_rgba(79,70,229,0.5)] transition-all duration-500">
+                      <svg className="w-10 h-10 text-white ml-1.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                    <div className="space-y-3">
+                      <h3 className="text-2xl font-black text-white tracking-tight uppercase drop-shadow-2xl">Смотреть видео</h3>
+                      <p className="text-base text-gray-400 font-medium max-w-xs mx-auto leading-tight">Узнайте как запустить генеринг за 60 секунд</p>
+                    </div>
+                  </div>
 
-              {/* Decorative elements */}
-              <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none" />
+                  {/* Decorative corner accents */}
+                  <div className="absolute top-8 left-8 w-4 h-4 border-t-2 border-l-2 border-white/10 rounded-tl-lg" />
+                  <div className="absolute top-8 right-8 w-4 h-4 border-t-2 border-r-2 border-white/10 rounded-tr-lg" />
+                  <div className="absolute bottom-8 left-8 w-4 h-4 border-b-2 border-l-2 border-white/10 rounded-bl-lg" />
+                  <div className="absolute bottom-8 right-8 w-4 h-4 border-b-2 border-r-2 border-white/10 rounded-br-lg" />
+                  
+                  <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                </div>
+              ) : (
+                <video 
+                  className="w-full h-full object-contain rounded-xl z-10"
+                  autoPlay 
+                  controls 
+                  controlsList="nodownload"
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  <source src="/main_video.mp4" type="video/mp4" />
+                  Ваш браузер не поддерживает видео.
+                </video>
+              )}
+              
+              {/* Fallback background pattern */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.05),transparent_70%)]" />
             </div>
           </div>
         </div>
