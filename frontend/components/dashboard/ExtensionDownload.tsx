@@ -14,6 +14,7 @@ export function ExtensionDownload() {
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [versionLoading, setVersionLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +64,20 @@ export function ExtensionDownload() {
     // Открываем в новой вкладке, чтобы не ломать SPA-навигацию и не блокировать UI.
     window.open('/api/extensions/download/zip', '_blank', 'noopener,noreferrer');
   };
+
+  const StepImage = ({ src, alt }: { src: string; alt: string }) => (
+    <div 
+      className="relative group cursor-zoom-in w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-white/10 hover:border-indigo-500 transition-all"
+      onClick={() => setSelectedImage(src)}
+    >
+      <img src={src} alt={alt} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+      <div className="absolute inset-0 bg-indigo-500/0 group-hover:bg-indigo-500/20 transition-colors flex items-center justify-center">
+        <svg className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+        </svg>
+      </div>
+    </div>
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -152,55 +167,163 @@ export function ExtensionDownload() {
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title="Установка расширения"
+        title="КАК РАБОТАТЬ С РАСШИРЕНИЕМ"
       >
         <div className="space-y-8 text-white/70 overflow-hidden">
+          {/* 1. Скачивание и распаковка */}
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">1. Скачивание и распаковка</h4>
-            <p className="leading-relaxed">
-              Нажмите кнопку <span className="text-white font-bold">"Скачать ZIP"</span>. После загрузки распакуйте архив в любую удобную папку на вашем компьютере. <span className="text-indigo-400">Важно:</span> не удаляйте эту папку после установки.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">2. Установка в Chrome</h4>
-            <div className="space-y-3">
-              <div className="flex gap-4">
-                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">a</div>
-                <p>Откройте Chrome и перейдите по адресу <code className="bg-white/5 px-2 py-1 rounded text-indigo-300">chrome://extensions/</code></p>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">b</div>
-                <p>Включите <span className="text-white font-bold">"Режим разработчика"</span> (Developer mode) в правом верхнем углу окна.</p>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">c</div>
-                <p>Нажмите <span className="text-white font-bold">"Загрузить распакованное расширение"</span> (Load unpacked) и выберите папку, в которую вы распаковали архив.</p>
+            <div className="flex flex-col gap-4">
+              <p className="leading-relaxed">
+                Нажмите кнопку <span className="text-white font-bold">"Скачать ZIP"</span>.
+              </p>
+              <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
+                <StepImage src="/instructions/step-1.png" alt="Скриншот 1" />
+                <p className="leading-relaxed text-sm pt-1">
+                  После загрузки распакуйте архив в любое удобное место на вашем компьютере. <span className="text-indigo-400 font-bold">Важно:</span> не удаляйте эту папку после установки.
+                </p>
+                <StepImage src="/instructions/step-2.png" alt="Скриншот 2" />
               </div>
             </div>
           </div>
 
+          {/* 2. Установка в Chrome */}
+          <div className="space-y-4">
+            <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">2. Установка в Chrome</h4>
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">a</div>
+                <div className="flex-1">
+                  <p className="mb-2">Откройте браузер Chrome (если у вас его нет - скачайте и установите его) и перейдите по адресу <code className="bg-white/5 px-2 py-1 rounded text-indigo-300">chrome://extensions/</code> (для этого скопируйте адрес и вставьте его в браузер).</p>
+                  <StepImage src="/instructions/step-3.png" alt="Скриншот 3" />
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">b</div>
+                <div className="flex-1">
+                  <p className="mb-2">Включите <span className="text-white font-bold">"Режим разработчика"</span> (Developer mode) в правом верхнем углу.</p>
+                  <StepImage src="/instructions/step-4.png" alt="Скриншот 4" />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="w-6 h-6 rounded-full bg-white/5 text-white/40 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">c</div>
+                <div className="flex-1">
+                  <p className="mb-2">Нажмите <span className="text-white font-bold">"Загрузить распакованное расширение"</span> (Load unpacked) и выберите папку, в которую вы распаковали архив.</p>
+                  <StepImage src="/instructions/step-5.png" alt="Скриншот 5" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Первый запуск */}
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">3. Первый запуск</h4>
-            <p className="leading-relaxed">
-              Закрепите расширение в панели инструментов Chrome. Нажмите на иконку расширения и вставьте ваш <span className="text-indigo-400 font-bold">Лицензионный ключ</span> (его можно скопировать выше в личном кабинете).
-            </p>
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                 <div className="flex-1">
+                   <p className="mb-2">Закрепите расширение в панели инструментов Chrome.</p>
+                   <StepImage src="/instructions/step-6.png" alt="Скриншот 6" />
+                 </div>
+              </div>
+              <div className="flex items-start gap-4">
+                 <div className="flex-1">
+                   <p className="mb-2">Нажмите на иконку расширения и вставьте ваш <span className="text-indigo-400 font-bold">Лицензионный ключ</span> (его можно скопировать в личном кабинете) и нажмите применить.</p>
+                   <StepImage src="/instructions/step-7.png" alt="Скриншот 7" />
+                 </div>
+              </div>
+            </div>
           </div>
 
+          {/* 4. Работа с Discord */}
           <div className="space-y-4">
             <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">4. Работа с Discord</h4>
-            <p className="leading-relaxed">
-              Откройте Discord в браузере, перейдите в чат с Midjourney. В расширении используйте кнопку <span className="text-indigo-300 font-bold">"Авто-поиск"</span>, чтобы система нашла поле ввода. После этого введите промпты и запустите автоматизацию.
-            </p>
-          </div>
+            <div className="space-y-6">
+              <p className="leading-relaxed">
+                Откройте Discord в браузере Chrome, перейдите в чат с Midjourney, куда отправляются промпты.<br/>
+                Откройте расширение и вставьте свои промпты, нажмите кнопку <span className="text-white font-bold">"Форматировать"</span>.
+              </p>
 
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6">
-            <p className="text-sm text-yellow-200/80 font-medium">
-              ⚠️ Если поле ввода не находится автоматически, воспользуйтесь кнопкой "Ручной выбор" и кликните по полю ввода Discord.
-            </p>
+              <div className="flex flex-col gap-2">
+                 <p className="leading-relaxed">
+                   Нажмите кнопку <span className="text-white font-bold">"Авто-поиск"</span>, чтобы система нашла поле ввода. После этого установите интервал (рекомендуемое значение <span className="text-indigo-300 font-bold">от 30 до 60 сек</span>) и нажмите <span className="text-green-400 font-bold">"start"</span>.
+                 </p>
+                 <StepImage src="/instructions/step-9.png" alt="Скриншот 9" />
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4">
+                <p className="text-sm text-yellow-200/80 font-medium leading-relaxed">
+                  ⚠️ На этом этапе, если поле ввода не находится автоматически, воспользуйтесь кнопкой <span className="text-white font-bold">"Ручной выбор"</span> и кликните по полю куда нужно вставлять промпты.
+                </p>
+              </div>
+
+              <p className="leading-relaxed">
+                Автогенеринг должен начаться. Проверьте отправляются ли первые несколько промптов, чтобы убедиться что в них нету ошибок.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                 <p className="leading-relaxed">
+                    После начала автогенеринга, вы сможете следить за количеством отправленных промптов.
+                 </p>
+                 <StepImage src="/instructions/step-10.png" alt="Скриншот 10" />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                 <p className="leading-relaxed">
+                    При необходимости, вы можете поставить генеринг на паузу или остановить его нажав кнопки <span className="text-white font-bold">"Pause/Stop"</span>.
+                 </p>
+                 <StepImage src="/instructions/step-11.png" alt="Скриншот 11" />
+              </div>
+
+              <p className="leading-relaxed border-l-2 border-green-500/50 pl-4 text-green-200/80">
+                После отправки последнего промпта статус генеринга поменяется на - <span className="font-bold">Завершено</span>.
+              </p>
+            </div>
+          </div>
+          
+          <div className="h-px bg-white/10 my-8"></div>
+
+          <div className="space-y-4 text-sm text-white/50">
+             <p>
+               Чтобы запустить новый генеринг удалите старые промпты из расширения и вставьте на их место новые → нажмите кнопку <span className="text-white/70 font-bold">форматировать</span> → нажмите кнопку <span className="text-white/70 font-bold">"Авто-поиск"</span> → проверьте интервал.
+               Нажмите <span className="text-white/70 font-bold">"Start"</span>, и автогенеринг должен будет начаться.
+             </p>
+             <p>
+               Баланс ваших кредитов вы в любое время можете посмотреть в своем личном кабинете.
+             </p>
+             <p>
+               При возникновении любых вопросов, пожалуйста, пишите в нашу техподдержку <a href="https://t.me/iqstockersupport" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">@iqstockersupport</a>
+             </p>
+             <p className="text-center pt-4 text-white/30 font-bold uppercase tracking-widest">
+               Спасибо и приятного вам использования!
+             </p>
           </div>
         </div>
       </Modal>
+
+      {/* Lightbox */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
+          onClick={() => setSelectedImage(null)}
+        >
+          <img 
+            src={selectedImage} 
+            alt="Full size" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl border border-white/10"
+            onClick={(e) => e.stopPropagation()} 
+          />
+          <button 
+            className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
+            onClick={() => setSelectedImage(null)}
+          >
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
