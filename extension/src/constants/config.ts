@@ -4,8 +4,8 @@
  * Централизованная конфигурация для production/development
  */
 
-// Production API URL (Railway)
-export const PRODUCTION_API_URL = 'https://backend-production-40040.up.railway.app/api/v1';
+// Production API URL (Custom Domain)
+export const PRODUCTION_API_URL = 'https://api.iqstocker.com/api/v1';
 
 // Development API URL (локальный сервер)
 export const DEVELOPMENT_API_URL = 'http://localhost:8000/api/v1';

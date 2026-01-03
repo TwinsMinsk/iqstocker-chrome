@@ -1,4 +1,4 @@
-﻿{
+{
     "manifest_version":  3,
     "name":  "IQСтокер Генеринг",
     "version":  "1.0.1",
@@ -11,6 +11,7 @@
                     ],
     "host_permissions":  [
                              "https://discord.com/*",
+                             "https://api.iqstocker.com/*",
                              "https://backend-production-40040.up.railway.app/*",
                              "http://localhost:8000/*"
                          ],
