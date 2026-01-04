@@ -650,7 +650,7 @@ function render(): void {
   
   app.innerHTML = `
     <div class="header">
-      <h1>IQ Стокер Генеринг</h1>
+      <h1>IQ СТОКЕР ГЕНЕРИНГ</h1>
       ${state.balance !== null ? `<div class="balance">Баланс: ${state.balance} кредитов</div>` : ''}
     </div>
     
