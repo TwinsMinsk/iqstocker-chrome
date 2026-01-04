@@ -306,16 +306,41 @@ class AnalyticsService:
 
         # 6. Остальные метрики (Generations, DAU) берем из DailyAnalytics
         # (они тяжелые для real-time, но менее критичны для мгновенного обновления)
+        # Если данных нет в DailyAnalytics, считаем напрямую из ExtensionLog (fallback)
         stats_history = db.query(
             func.coalesce(func.sum(DailyAnalytics.total_generations), 0).label('generations'),
-            func.coalesce(func.avg(DailyAnalytics.active_users_dau), 0).label('dau_avg')
+            func.coalesce(func.avg(DailyAnalytics.active_users_dau), 0).label('dau_avg'),
+            func.count(DailyAnalytics.date).label('days_count')  # Количество дней с данными
         ).filter(
             DailyAnalytics.date >= start_date,
             DailyAnalytics.date <= end_date
         ).first()
         
-        total_generations = int(stats_history.generations or 0)
-        dau_count = int(stats_history.dau_avg or 0)
+        # Проверяем, есть ли данные в DailyAnalytics
+        days_in_period = (end_date - start_date).days + 1
+        days_with_data = int(stats_history.days_count or 0) if stats_history else 0
+        
+        # Если данных в DailyAnalytics нет или их меньше 50% от периода - считаем real-time
+        if days_with_data == 0 or (days_with_data < days_in_period * 0.5):
+            # Fallback: считаем напрямую из ExtensionLog
+            logger.info(f"DailyAnalytics incomplete ({days_with_data}/{days_in_period} days), using real-time calculation")
+            total_generations = db.query(func.coalesce(func.sum(ExtensionLog.successful_count), 0)).filter(
+                ExtensionLog.timestamp >= start_dt,
+                ExtensionLog.timestamp <= end_dt
+            ).scalar() or 0
+            total_generations = int(total_generations)
+            
+            # DAU считаем как уникальных пользователей с успешными генерациями
+            dau_count = db.query(func.count(distinct(ExtensionLog.user_id))).filter(
+                ExtensionLog.timestamp >= start_dt,
+                ExtensionLog.timestamp <= end_dt,
+                ExtensionLog.status.in_(['success', 'completed'])
+            ).scalar() or 0
+        else:
+            # Используем данные из DailyAnalytics
+            total_generations = int(stats_history.generations or 0)
+            dau_count = int(stats_history.dau_avg or 0)
+        
         dau_percentage = (dau_count / total_users * 100.0) if total_users > 0 else 0.0
 
         # 7. Сложные метрики (WAU, MAU, LTV, Retention, Growth) - считаются on-the-fly
