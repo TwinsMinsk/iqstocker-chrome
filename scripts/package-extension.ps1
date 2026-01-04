@@ -68,7 +68,10 @@ $ManifestSrcPath = Join-Path $ExtensionDir "src\manifest.json"
 Assert-FileExists $ManifestSrcPath "Check repository structure."
 
 # 1) (Optional) bump version in manifest.json
-$manifest = Get-Content -LiteralPath $ManifestSrcPath -Raw | ConvertFrom-Json
+# ВАЖНО: Читаем и записываем файл с явной UTF-8 кодировкой (без BOM) для сохранения русского текста
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+$manifestJson = [System.IO.File]::ReadAllText($ManifestSrcPath, $utf8NoBom)
+$manifest = $manifestJson | ConvertFrom-Json
 
 if ($Version) {
   # Minimal semver check (x.y.z). Extend if needed.
@@ -76,7 +79,9 @@ if ($Version) {
     throw "Version must be x.y.z (example: 1.0.2). Got: $Version"
   }
   $manifest.version = $Version
-  $manifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ManifestSrcPath -Encoding UTF8
+  # Сохраняем с правильной кодировкой UTF-8 без BOM
+  $updatedJson = $manifest | ConvertTo-Json -Depth 10
+  [System.IO.File]::WriteAllText($ManifestSrcPath, $updatedJson, $utf8NoBom)
 }
 
 $FinalVersion = [string]$manifest.version
@@ -113,6 +118,12 @@ if (Test-Path -LiteralPath $ZipPath) {
 
 Write-Host "Compress-Archive -> $ZipPath"
 Compress-Archive -Path (Join-Path $DistDir "*") -DestinationPath $ZipPath -Force
+
+# Проверяем, что manifest.json в dist/ имеет правильную кодировку
+$distManifestPath = Join-Path $DistDir "manifest.json"
+$distManifestContent = [System.IO.File]::ReadAllText($distManifestPath, $utf8NoBom)
+$distManifest = $distManifestContent | ConvertFrom-Json
+Write-Host "✓ Manifest в dist/ проверен: name='$($distManifest.name)', version=$($distManifest.version)"
 
 $zipInfo = Get-Item -LiteralPath $ZipPath
 $hash = Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256
