@@ -60,7 +60,11 @@ esbuild.buildSync({
 });
 
 // Copy static files
-fs.copySync('src/manifest.json', 'dist/manifest.json');
+// Важно: manifest.json копируем с явной UTF-8 кодировкой для корректного отображения русского текста
+const manifestContent = fs.readFileSync('src/manifest.json', 'utf8');
+fs.ensureDirSync('dist');
+fs.writeFileSync('dist/manifest.json', manifestContent, 'utf8');
+
 fs.copySync('src/popup.html', 'dist/popup.html');
 fs.copySync('src/popup.css', 'dist/popup.css');
 
