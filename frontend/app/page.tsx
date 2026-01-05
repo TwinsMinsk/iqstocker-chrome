@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { OfferModal } from '@/components/common/OfferModal';
+import { AboutServiceModal } from '@/components/common/AboutServiceModal';
+import { InfoModal } from '@/components/common/InfoModal';
 
 // Icon Components with guaranteed sizes
 const IconWrapper = ({ children, className = "", size = 24 }: { children: React.ReactNode, className?: string, size?: number }) => (
@@ -60,6 +62,7 @@ const MinusIcon = ({ size = 24 }: { size?: number }) => (
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   const faqs = [
@@ -121,7 +124,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Полноценная автоматизация Midjourney прямо в вашем браузере
+            Отправляйте десятки промптов в Midjourney - одним кликом
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -131,12 +134,59 @@ export default function HomePage() {
             >
               Начать бесплатно
             </Link>
-            <Link 
-              href="/login" 
-              className="w-full sm:w-auto px-8 py-4 bg-[#1a1a1a] hover:bg-[#252525] text-white border border-white/5 rounded-xl font-bold transition-all"
-            >
-              Войти в систему
-            </Link>
+            <div className="relative group">
+              <button 
+                onClick={() => setIsAboutModalOpen(true)}
+                className="w-full sm:w-auto px-8 py-4 bg-[#1a1a1a] hover:bg-[#252525] text-white border border-white/5 rounded-xl font-bold transition-all relative z-10 hover:border-white/10"
+              >
+                Что делает сервис
+              </button>
+              
+              {/* Neon Arrow */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 sm:mt-0 sm:left-auto sm:translate-x-0 sm:-top-16 sm:-right-28 pointer-events-none z-0 hidden sm:block">
+                <svg 
+                  width="112" 
+                  height="112" 
+                  viewBox="0 0 140 140" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="transform rotate-0"
+                >
+                  <defs>
+                    <linearGradient id="neon-gradient" x1="140" y1="0" x2="0" y2="140" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#818cf8" />
+                      <stop offset="0.5" stopColor="#c084fc" />
+                      <stop offset="1" stopColor="#818cf8" />
+                    </linearGradient>
+                    <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  
+                  <g filter="url(#neon-glow)">
+                    <path 
+                      d="M90 10 C 140 40, 110 90, 10 105" 
+                      stroke="url(#neon-gradient)" 
+                      strokeWidth="3.5" 
+                      strokeLinecap="round"
+                      className="opacity-90"
+                    />
+                    <path 
+                      d="M25 92 L 10 105 L 28 112" 
+                      stroke="url(#neon-gradient)" 
+                      strokeWidth="3.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      className="opacity-90"
+                    />
+                  </g>
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Dashboard Preview / Video Section */}
@@ -368,6 +418,10 @@ export default function HomePage() {
       <OfferModal 
         isOpen={isOfferModalOpen} 
         onClose={() => setIsOfferModalOpen(false)} 
+      />
+      <AboutServiceModal 
+        isOpen={isAboutModalOpen} 
+        onClose={() => setIsAboutModalOpen(false)} 
       />
     </div>
   );

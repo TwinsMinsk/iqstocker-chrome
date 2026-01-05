@@ -116,30 +116,37 @@ if (Test-Path -LiteralPath $ZipPath) {
   Remove-Item -LiteralPath $ZipPath -Force
 }
 
-Write-Host "Compress-Archive -> $ZipPath"
-Compress-Archive -Path (Join-Path $DistDir "*") -DestinationPath $ZipPath -Force
+Write-Host "Creating ZIP and updating latest.json..."
+# Используем Node.js скрипты для создания ZIP и обновления JSON (избегаем проблем с кодировкой PowerShell)
+$createZipScript = Join-Path $PSScriptRoot "create-zip.js"
+$updateJsonScript = Join-Path $PSScriptRoot "update-latest-json.js"
 
-# Проверяем, что manifest.json в dist/ имеет правильную кодировку
-$distManifestPath = Join-Path $DistDir "manifest.json"
-$distManifestContent = [System.IO.File]::ReadAllText($distManifestPath, $utf8NoBom)
-$distManifest = $distManifestContent | ConvertFrom-Json
-Write-Host "✓ Manifest в dist/ проверен: name='$($distManifest.name)', version=$($distManifest.version)"
-
-$zipInfo = Get-Item -LiteralPath $ZipPath
-$hash = Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256
-
-$LatestJsonPath = Join-Path $OutDir "latest.json"
-$latest = [ordered]@{
-  version    = $FinalVersion
-  built_at   = (Get-Date).ToUniversalTime().ToString("o")
-  sha256     = $hash.Hash.ToLowerInvariant()
-  size_bytes = [int64]$zipInfo.Length
+if (Test-Path $createZipScript) {
+  node $createZipScript
+  if (-not (Test-Path $ZipPath)) {
+    throw "Failed to create ZIP file at $ZipPath"
+  }
+  # Обновляем latest.json
+  if (Test-Path $updateJsonScript) {
+    node $updateJsonScript
+  }
+} else {
+  # Fallback на PowerShell если скрипты не найдены
+  Compress-Archive -Path (Join-Path $DistDir "*") -DestinationPath $ZipPath -Force
+  $zipInfo = Get-Item -LiteralPath $ZipPath
+  $hash = Get-FileHash -LiteralPath $ZipPath -Algorithm SHA256
+  $LatestJsonPath = Join-Path $OutDir "latest.json"
+  $latest = [ordered]@{
+    version    = $FinalVersion
+    built_at   = (Get-Date).ToUniversalTime().ToString("o")
+    sha256     = $hash.Hash.ToLowerInvariant()
+    size_bytes = [int64]$zipInfo.Length
+  }
+  $latest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $LatestJsonPath -Encoding UTF8
 }
 
-$latest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $LatestJsonPath -Encoding UTF8
-
 Write-Host "Done:"
-Write-Host "  ZIP:  $ZipPath"
+Write-Host "  ZIP: $ZipPath"
 Write-Host "  META: $LatestJsonPath"
 
 

@@ -151,7 +151,17 @@ function setupEventListeners(): void {
       // Сохранить ВСЕ строки (включая пустые) - они нужны как разделители промптов
       state.prompts = text.split('\n');
       saveState();
-      render();
+      
+      // Вместо полной перерисовки (render), обновляем только счетчик вручную
+      // Полный render() вызовется автоматически через 500мс в handlePromptsChange
+      const fullText = state.prompts.join('\n');
+      const parsedPrompts = parsePromptsFromText(fullText);
+      const validPromptsCount = cleanPrompts(parsedPrompts).length;
+      
+      const countEl = document.querySelector('.prompts-count');
+      if (countEl) {
+        countEl.textContent = `${validPromptsCount} промптов`;
+      }
     });
   }
   
@@ -639,6 +649,18 @@ function render(): void {
   const app = document.getElementById('app');
   if (!app) return;
   
+  // 1. ЗАПОМИНАЕМ ФОКУС И ПОЗИЦИЮ КУРСОРА
+  const activeElement = document.activeElement as HTMLElement;
+  const activeId = activeElement?.id;
+  let selectionStart = 0;
+  let selectionEnd = 0;
+
+  // Если фокус был в поле ввода или textarea, запоминаем позицию каретки
+  if (activeElement && (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement)) {
+    selectionStart = activeElement.selectionStart || 0;
+    selectionEnd = activeElement.selectionEnd || 0;
+  }
+  
   const progress = state.totalPrompts > 0 
     ? Math.round((state.currentPrompt / state.totalPrompts) * 100) 
     : 0;
@@ -813,6 +835,23 @@ function render(): void {
   
   // Переподключить обработчики после рендера
   setupEventListeners();
+
+  // 2. ВОССТАНАВЛИВАЕМ ФОКУС И ПОЗИЦИЮ КУРСОРА
+  if (activeId) {
+    const newElement = document.getElementById(activeId);
+    if (newElement instanceof HTMLInputElement || newElement instanceof HTMLTextAreaElement) {
+      newElement.focus();
+      // Восстанавливаем позицию курсора, чтобы можно было продолжать печатать
+      try {
+        newElement.setSelectionRange(selectionStart, selectionEnd);
+      } catch (e) {
+        // Игнорируем ошибки если элемент не поддерживает выделение
+      }
+    } else if (newElement) {
+       // Для кнопок и других элементов просто возвращаем фокус
+       newElement.focus();
+    }
+  }
 }
 
 /**

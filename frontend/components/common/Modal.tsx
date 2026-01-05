@@ -92,10 +92,10 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         {/* Content - скроллируемый */}
         <div 
           ref={contentRef}
-          className="flex-1 overflow-y-auto overscroll-contain modal-scrollbar min-h-0"
+          className="flex-1 overflow-y-auto overscroll-contain min-h-0 [&::-webkit-scrollbar]:w-3 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-indigo-500/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-clip-padding hover:[&::-webkit-scrollbar-thumb]:bg-indigo-500/70"
           style={{ 
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(99, 102, 241, 0.3) transparent'
+            scrollbarWidth: 'auto',
+            scrollbarColor: 'rgba(99, 102, 241, 0.6) transparent'
           }}
         >
           <div className="p-8">

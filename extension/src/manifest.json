@@ -1,7 +1,7 @@
 {
     "manifest_version":  3,
     "name":  "IQ СТОКЕР ГЕНЕРИНГ",
-    "version":  "1.0.2",
+    "version":  "1.0.3",
     "description":  "Автоматизируй отправку промптов в Midjourney через Discord",
     "permissions":  [
                         "storage",

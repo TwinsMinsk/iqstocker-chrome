@@ -239,8 +239,53 @@ export function ExtensionDownload() {
             <div className="space-y-6">
               <div className="flex flex-col gap-3">
                 <p className="leading-relaxed">
-                  Откройте Discord в браузере Chrome, перейдите в чат с Midjourney, куда отправляются промпты.<br/>
-                  Откройте расширение и вставьте свои промпты, нажмите кнопку <span className="text-white font-bold">"Форматировать"</span>.
+                  Откройте Discord (<a href="https://discord.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">https://discord.com/</a>) в браузере Chrome, перейдите в чат с Midjourney, куда отправляются промпты.<br/>
+                  Подготовьте Discord к генерации - выставьте все настройки, с которыми вы работаете.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Промпты */}
+          <div className="space-y-4">
+            <h4 className="text-white font-black uppercase tracking-wider text-sm border-l-4 border-indigo-500 pl-4">5. Промпты</h4>
+            <div className="space-y-6">
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">
+                  Заранее подготовьте список промптов для генеринга<br/>
+                  Подходящие форматы промтов:
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                <div>
+                  <p className="text-white font-bold mb-2">Вариант 1. Нумерованный список</p>
+                  <p className="text-white/60 text-sm mb-2">Пример:</p>
+                  <pre className="bg-black/30 p-4 rounded-lg text-sm text-white/80 font-mono overflow-x-auto">
+{`1. prompt text
+2. prompt text
+3. prompt text`}
+                  </pre>
+                </div>
+
+                <div className="h-px bg-white/10 my-4"></div>
+
+                <div>
+                  <p className="text-white font-bold mb-2">Вариант 2. Каждый промпт с нового абзаца (между промптами должна быть пустая строка)</p>
+                  <p className="text-white/60 text-sm mb-2">Пример:</p>
+                  <pre className="bg-black/30 p-4 rounded-lg text-sm text-white/80 font-mono overflow-x-auto whitespace-pre">
+{`prompt text
+
+prompt text
+
+prompt text`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <p className="leading-relaxed">
+                  После того, как вы сделали список готовых промптов - откройте расширение, вставьте свои промпты, нажмите кнопку <span className="text-white font-bold">"Форматировать"</span>.
                 </p>
                 <StepImage src="/instructions/step-8.png" alt="Скриншот 8" />
               </div>
@@ -285,15 +330,24 @@ export function ExtensionDownload() {
           <div className="h-px bg-white/10 my-8"></div>
 
           <div className="space-y-4">
-             <p className="leading-relaxed">
-               Чтобы запустить новый генеринг удалите старые промпты из расширения и вставьте на их место новые → нажмите кнопку <span className="text-white/70 font-bold">форматировать</span> → нажмите кнопку <span className="text-white/70 font-bold">"Авто-поиск"</span> → проверьте интервал.<br/>
-               Нажмите <span className="text-white/70 font-bold">"Start"</span>, и автогенеринг должен будет начаться.
-             </p>
+             <div>
+               <p className="leading-relaxed mb-4">
+                 Чтобы запустить новый генеринг:
+               </p>
+               <ol className="list-decimal list-inside space-y-2 text-white/70 leading-relaxed ml-4">
+                 <li>удалите старые промпты из расширения (для этого нажмите на поле с промптами, выделите их все нажав <span className="text-white font-bold">CTRL A</span> на клавиатуре и нажмите <span className="text-white font-bold">delete</span>)</li>
+                 <li>вставьте на их место новые промпты</li>
+                 <li>нажмите кнопку <span className="text-white font-bold">"Форматировать"</span></li>
+                 <li>нажмите кнопку <span className="text-white font-bold">"Авто-поиск"</span></li>
+                 <li>проверьте интервал</li>
+                 <li>Нажмите <span className="text-white font-bold">"Start"</span>, и автогенеринг должен будет начаться.</li>
+               </ol>
+             </div>
              <p className="leading-relaxed">
                Баланс ваших кредитов вы в любое время можете посмотреть в своем личном кабинете.
              </p>
              <p className="leading-relaxed">
-               При возникновении любых вопросов, пожалуйста, пишите в нашу техподдержку <a href="https://t.me/iqstockersupport" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">@iqstockersupport</a>
+               При возникновении любых вопросов или проблем, пожалуйста, пишите в нашу техподдержку <a href="https://t.me/iqstockersupport" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">@iqstockersupport</a>
              </p>
              <p className="text-center pt-4 text-white/30 font-bold uppercase tracking-widest text-sm">
                Спасибо и приятного вам использования!
