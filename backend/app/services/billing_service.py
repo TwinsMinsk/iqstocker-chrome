@@ -85,7 +85,7 @@ class BillingService:
         plan_id: str
     ) -> Dict:
         """
-        Создать платеж через Tribute API
+        Создать платеж через Tribute API (Create Order)
         
         Args:
             db: Database session
@@ -115,30 +115,78 @@ class BillingService:
         db.add(transaction)
         db.flush()
         
-        # Создать платеж в Tribute
-        # Мы используем ссылки из настроек планов, добавляя user_id для отслеживания
-        tribute_url = app_settings_service.get_plan_payment_link(db, plan_id) or plan.get("tribute_link", "https://tribute.to/your-bot")
+        # === Генерируем уникальный инвойс через API Tribute ===
+        # Документация: https://wiki.tribute.tg/for-content-creators/api-documentation/orders
         
-        # Если ссылка ведет на бота, добавляем start параметр с ID пользователя
-        if "?" in tribute_url:
-            payment_url = f"{tribute_url}&user_id={user.id}&plan_id={plan_id}"
-        else:
-            # Для чистых ссылок добавляем как первый параметр
-            # ВНИМАНИЕ: Для Tribute.to это может потребовать ручного ввода ID пользователем
-            # если не используется создание инвойса через API
-            payment_url = f"{tribute_url}?user_id={user.id}&plan_id={plan_id}"
+        # Если API ключ не задан, используем статический фоллбек (для локальной разработки без API)
+        if not settings.TRIBUTE_API_KEY:
+            logger.warning("TRIBUTE_API_KEY not set. Using static link fallback (user tracking might fail without Telegram ID).")
+            tribute_url = app_settings_service.get_plan_payment_link(db, plan_id) or plan.get("tribute_link", "https://tribute.to/your-bot")
+            if "?" in tribute_url:
+                payment_url = f"{tribute_url}&user_id={user.id}&plan_id={plan_id}"
+            else:
+                payment_url = f"{tribute_url}?user_id={user.id}&plan_id={plan_id}"
             
-        transaction.payment_id = f"tribute_pending_{transaction.id}"
-        db.commit()
+            transaction.payment_id = f"tribute_pending_{transaction.id}"
+            db.commit()
+            return {
+                "payment_id": str(transaction.id),
+                "payment_url": payment_url,
+                "plan": plan["name"],
+                "amount": plan["price_eur"],
+                "currency": "EUR",
+                "expires_at": datetime.utcnow() + timedelta(hours=1)
+            }
+
+        # Формируем payload, который вернется в webhook
+        metadata_payload = f"user_id={user.id}&plan_id={plan_id}&tx_id={transaction.id}"
         
-        return {
-            "payment_id": str(transaction.id),
-            "payment_url": payment_url,
-            "plan": plan["name"],
-            "amount": plan["price_eur"],
-            "currency": "EUR",
-            "expires_at": datetime.utcnow() + timedelta(hours=1)
-        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.tribute.tg/api/v1/orders",
+                    headers={
+                        "X-Service-Api-Key": settings.TRIBUTE_API_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "amount": int(plan["price_eur"] * 100),  # Tribute принимает в центах
+                        "currency": "EUR",
+                        "description": plan["name"],
+                        "payload": metadata_payload,  # Передаем ID пользователя
+                        # "return_url": "https://your-site.com/payment/success",  # Можно добавить если есть фронт
+                    },
+                    timeout=10.0
+                )
+                
+                if response.status_code not in [200, 201]:
+                    logger.error(f"Tribute API Error: {response.status_code} {response.text}")
+                    raise Exception(f"Failed to create invoice with Tribute: {response.text}")
+                
+                data = response.json()
+                payment_url = data.get("link") or data.get("invoice_link")
+                tribute_order_id = data.get("id")
+                
+                if not payment_url:
+                    raise Exception("Tribute API returned no payment link")
+
+                transaction.payment_id = str(tribute_order_id)
+                db.commit()
+                
+                return {
+                    "payment_id": str(transaction.id),
+                    "payment_url": payment_url,
+                    "plan": plan["name"],
+                    "amount": plan["price_eur"],
+                    "currency": "EUR",
+                    "expires_at": datetime.utcnow() + timedelta(minutes=30)
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to create payment via API: {e}")
+            # Откат не делаем, транзакция просто останется pending или можно удалить
+            # Но лучше оставить для истории попыток
+            raise e
     
     @staticmethod
     def get_user_transactions(

@@ -152,9 +152,32 @@ class PaymentService:
         # Название продукта/подписки
         product_name = payload.get("subscription_name") or payload.get("product_name") or payload.get("description", "")
         
-        # Пытаемся найти user_id в custom_data или comment (Tribute часто туда кладет)
-        custom_data = payload.get("custom_data") or {}
-        user_id = (custom_data.get("user_id") if isinstance(custom_data, dict) else None) or payload.get("comment")
+        # === ПАРСИНГ ПАРАМЕТРОВ (USER_ID) ИЗ PAYLOAD ===
+        # Мы передаем в create_payment payload="user_id=...&plan_id=..."
+        # Tribute возвращает эту строку в поле "payload"
+        
+        raw_payload_str = payload.get("payload")
+        parsed_params = {}
+        
+        if raw_payload_str and isinstance(raw_payload_str, str):
+            try:
+                from urllib.parse import parse_qs
+                # parse_qs возвращает {'key': ['val']}, берем [0]
+                parsed = parse_qs(raw_payload_str)
+                for k, v in parsed.items():
+                    if v:
+                        parsed_params[k] = v[0]
+            except Exception as e:
+                logger.warning(f"Failed to parse payload string '{raw_payload_str}': {e}")
+
+        # Приоритет 1: user_id из распарсенного payload (наш динамический инвойс)
+        user_id = parsed_params.get("user_id")
+        plan_id_from_payload = parsed_params.get("plan_id")
+        
+        # Приоритет 2: custom_data или comment (legacy/fallback)
+        if not user_id:
+            custom_data = payload.get("custom_data") or {}
+            user_id = (custom_data.get("user_id") if isinstance(custom_data, dict) else None) or payload.get("comment")
         
         # Проверить на дублирование (idempotency)
         existing_transaction = db.query(Transaction).filter(
@@ -211,9 +234,15 @@ class PaymentService:
             logger.info(f"Transaction {payment_id} already processed (reconciled)")
             return {"status": "already_processed", "message": "Transaction already processed"}
         
-        # Определить план (самый надежный вариант — plan_id из custom_data)
+        # Определить план
         plan_id = None
-        if isinstance(custom_data, dict):
+        
+        # 1. Из payload (самый надежный)
+        if "plan_id_from_payload" in locals() and plan_id_from_payload:
+            plan_id = str(plan_id_from_payload)
+
+        # 2. Из custom_data (fallback)
+        if not plan_id and isinstance(custom_data, dict):
             plan_id_candidate = custom_data.get("plan_id")
             if plan_id_candidate:
                 plan_id = str(plan_id_candidate)
