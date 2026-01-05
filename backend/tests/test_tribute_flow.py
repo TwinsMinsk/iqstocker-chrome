@@ -17,7 +17,7 @@ from app.core.config import settings
 def test_user(db: Session):
     user = User(
         email=f"test_payment_{uuid.uuid4()}@example.com",
-        hashed_password="hashed_secret",
+        password_hash="hashed_secret",
         is_active=True
     )
     db.add(user)
