@@ -649,16 +649,18 @@ function render(): void {
   const app = document.getElementById('app');
   if (!app) return;
   
-  // 1. ЗАПОМИНАЕМ ФОКУС И ПОЗИЦИЮ КУРСОРА
+  // 1. ЗАПОМИНАЕМ ФОКУС, ПОЗИЦИЮ КУРСОРА И ПРОКРУТКУ
   const activeElement = document.activeElement as HTMLElement;
   const activeId = activeElement?.id;
   let selectionStart = 0;
   let selectionEnd = 0;
+  let scrollTop = 0;
 
-  // Если фокус был в поле ввода или textarea, запоминаем позицию каретки
+  // Если фокус был в поле ввода или textarea, запоминаем позицию каретки и скролл
   if (activeElement && (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement)) {
     selectionStart = activeElement.selectionStart || 0;
     selectionEnd = activeElement.selectionEnd || 0;
+    scrollTop = activeElement.scrollTop;
   }
   
   const progress = state.totalPrompts > 0 
@@ -836,14 +838,15 @@ function render(): void {
   // Переподключить обработчики после рендера
   setupEventListeners();
 
-  // 2. ВОССТАНАВЛИВАЕМ ФОКУС И ПОЗИЦИЮ КУРСОРА
+  // 2. ВОССТАНАВЛИВАЕМ ФОКУС, ПОЗИЦИЮ КУРСОРА И ПРОКРУТКУ
   if (activeId) {
     const newElement = document.getElementById(activeId);
     if (newElement instanceof HTMLInputElement || newElement instanceof HTMLTextAreaElement) {
       newElement.focus();
-      // Восстанавливаем позицию курсора, чтобы можно было продолжать печатать
+      // Восстанавливаем позицию курсора и прокрутку
       try {
         newElement.setSelectionRange(selectionStart, selectionEnd);
+        newElement.scrollTop = scrollTop;
       } catch (e) {
         // Игнорируем ошибки если элемент не поддерживает выделение
       }
