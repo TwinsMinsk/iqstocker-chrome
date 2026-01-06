@@ -85,9 +85,14 @@ class PaymentService:
             Dict с результатом обработки
         """
         # 1. Проверить подпись (секрет берем из ENV, иначе из БД админ-настройки)
-        from app.services.app_settings_service import app_settings_service
+        secret = settings.TRIBUTE_API_KEY
+        
+        # Если ключа нет в ENV (локальная разработка без ключа), пробуем старый способ или пропускаем
+        if not secret:
+             # Fallback для совместимости или тестов
+             from app.services.app_settings_service import app_settings_service
+             secret = settings.TRIBUTE_WEBHOOK_SECRET or app_settings_service.get_tribute_webhook_secret_plaintext(db)
 
-        secret = settings.TRIBUTE_WEBHOOK_SECRET or app_settings_service.get_tribute_webhook_secret_plaintext(db)
         if not PaymentService.verify_tribute_signature(request_body, signature, secret):
             logger.error("Invalid Tribute webhook signature")
             return {

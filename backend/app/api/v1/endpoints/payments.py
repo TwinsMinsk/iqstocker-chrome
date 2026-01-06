@@ -62,6 +62,13 @@ async def tribute_webhook(
         # Распарсить JSON
         try:
             webhook_data = json.loads(body)
+            
+            # === ЛОГИРОВАНИЕ WEBHOOK JSON (ДЛЯ ОТЛАДКИ) ===
+            # Логируем структурированный JSON для удобства чтения в логах Railway
+            logger.info(f"[TRIBUTE WEBHOOK] Received event: {webhook_data.get('name', 'unknown')}")
+            logger.info(f"[TRIBUTE WEBHOOK] Full payload: {json.dumps(webhook_data, indent=2, ensure_ascii=False)}")
+            logger.info(f"[TRIBUTE WEBHOOK] Signature: {trbt_signature[:20]}...")
+            # ==============================================
         except json.JSONDecodeError:
             # Логируем факт получения даже при невалидном JSON
             _log_db = SASession(bind=db.get_bind())
