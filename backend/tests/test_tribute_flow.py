@@ -62,19 +62,18 @@ async def test_create_payment_order(db: Session, test_user: User):
             url = call_args[0][0]
             kwargs = call_args[1]
             
-            assert url == "https://tribute.tg/api/v1/shop/orders"
-            assert kwargs["headers"]["Api-Key"] == "test_api_key"
+            assert url == "https://api.tribute.tg/api/v1/orders"
+            assert kwargs["headers"]["X-Service-Api-Key"] == "test_api_key"
             
             # Самое важное: проверяем payload
             json_body = kwargs["json"]
             assert json_body["amount"] == 200  # 2.00 EUR * 100
             assert json_body["currency"] == "eur"
-            assert json_body["title"] == "500 Credits"
+            assert json_body["description"] == "500 Credits"
             assert "user_id=" in json_body["payload"]
             assert str(test_user.id) in json_body["payload"]
             assert "plan_id=credit_500" in json_body["payload"]
-            assert json_body["successUrl"] == "https://iqstocker.com/payment/success"
-            assert json_body["failUrl"] == "https://iqstocker.com/payment/error"
+            # Примечание: successUrl и failUrl могут не поддерживаться в базовом Orders API
             
             # Проверяем, что транзакция создалась в БД с ID из Tribute
             tx = db.query(Transaction).filter(Transaction.user_id == test_user.id).order_by(Transaction.id.desc()).first()
