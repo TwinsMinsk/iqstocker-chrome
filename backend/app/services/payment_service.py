@@ -157,142 +157,73 @@ class PaymentService:
         # Название продукта/подписки
         product_name = payload.get("subscription_name") or payload.get("product_name") or payload.get("description", "")
         
-        # === ПАРСИНГ ПАРАМЕТРОВ (USER_ID) ИЗ PAYLOAD ===
-        # Мы передаем в create_payment payload="user_id=...&plan_id=..."
-        # Tribute возвращает эту строку в поле "payload"
+        # === ПАРСИНГ ПАРАМЕТРОВ ИЗ ВЕБХУКА ===
+        # Для Shop API мы не используем payload для передачи параметров.
+        # Мы используем поиск по email (который передавали при создании) и uuid транзакции.
         
-        raw_payload_str = payload.get("payload")
-        parsed_params = {}
-        
-        if raw_payload_str and isinstance(raw_payload_str, str):
-            try:
-                from urllib.parse import parse_qs
-                # parse_qs возвращает {'key': ['val']}, берем [0]
-                parsed = parse_qs(raw_payload_str)
-                for k, v in parsed.items():
-                    if v:
-                        parsed_params[k] = v[0]
-            except Exception as e:
-                logger.warning(f"Failed to parse payload string '{raw_payload_str}': {e}")
-
-        # Приоритет 1: user_id из распарсенного payload (наш динамический инвойс)
-        user_id = parsed_params.get("user_id")
-        plan_id_from_payload = parsed_params.get("plan_id")
-        
-        # Приоритет 2: custom_data или comment (legacy/fallback)
-        if not user_id:
-            custom_data = payload.get("custom_data") or {}
-            user_id = (custom_data.get("user_id") if isinstance(custom_data, dict) else None) or payload.get("comment")
-        
-        # Проверить на дублирование (idempotency)
-        existing_transaction = db.query(Transaction).filter(
+        # 1. Сначала ищем по payment_id (это uuid заказа из Tribute)
+        # Мы сохраняли его в Transaction.payment_id при создании
+        transaction = db.query(Transaction).filter(
             Transaction.payment_id == payment_id
         ).first()
-        
-        # ВАЖНО: если транзакция уже completed, это не значит, что мы безопасно начислили
-        # все побочные эффекты (например, реферальную награду). Поэтому делаем
-        # "reconciliation" (идемпотентно) по credit_transactions.
-        if existing_transaction and existing_transaction.status == "completed":
-            if not existing_transaction.user_id:
-                logger.warning(f"Completed transaction {payment_id} has no user_id; cannot reconcile credits")
-                return {"status": "already_processed", "message": "Transaction already processed"}
 
-            from app.models.credit_transaction import CreditTransaction, CreditTransactionType
-            from app.services.credit_service import credit_service
-            from app.services.referral_service import referral_service
-
-            # 1) Purchase credits idempotency (must exist exactly once)
-            purchase_exists = db.query(CreditTransaction).filter(
-                CreditTransaction.user_id == existing_transaction.user_id,
-                CreditTransaction.type == CreditTransactionType.PURCHASE.value,
-                CreditTransaction.related_entity_id == payment_id,
-            ).first()
-
-            if not purchase_exists:
-                logger.warning(f"Reconciling missing purchase credit tx for payment {payment_id}")
-                _, credit_error = credit_service.add_credits(
-                    db=db,
-                    user_id=str(existing_transaction.user_id),
-                    amount=int(existing_transaction.credits),
-                    transaction_type=CreditTransactionType.PURCHASE.value,
-                    related_entity_id=payment_id,
-                    description=f"Purchase (replay): {existing_transaction.plan_id or ''}",
-                    commit=False,
-                )
-                if credit_error and credit_error != "duplicate_transaction":
-                    db.rollback()
-                    return {"status": "error", "message": f"Failed to reconcile credits: {credit_error}"}
-
-            # 2) Referral reward idempotency (safe to call multiple times)
-            referral_reward, ref_error = referral_service.process_referral_reward(
-                db=db,
-                payer_user_id=str(existing_transaction.user_id),
-                plan_id=str(existing_transaction.plan_id or ""),
-                payment_id=payment_id,
-            )
-            if ref_error:
-                db.rollback()
-                # Не откатываем payment (он уже processed), но сигнализируем ошибку.
-                return {"status": "error", "message": f"Failed to reconcile referral reward: {ref_error}"}
-
-            db.commit()
-            logger.info(f"Transaction {payment_id} already processed (reconciled)")
-            return {"status": "already_processed", "message": "Transaction already processed"}
-        
-        # Определить план
-        plan_id = None
-        
-        # 1. Из payload (самый надежный)
-        if "plan_id_from_payload" in locals() and plan_id_from_payload:
-            plan_id = str(plan_id_from_payload)
-
-        # 2. Из custom_data (fallback)
-        if not plan_id and isinstance(custom_data, dict):
-            plan_id_candidate = custom_data.get("plan_id")
-            if plan_id_candidate:
-                plan_id = str(plan_id_candidate)
-
-        # Fallback: план по названию или сумме
-        if not plan_id:
-            plan_id = PaymentService._get_plan_id_from_name(product_name)
-        
-        # Если не нашли по названию, попробуем по сумме (как запасной вариант)
-        if not plan_id:
-            plan_id = PaymentService._get_plan_id_from_amount(amount)
-
-        if not plan_id:
-            logger.error(f"Unknown product: {product_name}, amount: {amount}")
-            return {
-                "status": "error",
-                "message": f"Unknown product: {product_name}"
-            }
-        
-        from app.services.billing_service import billing_service
-        plan = billing_service.get_plan(plan_id)
-        
-        # Поиск пользователя
         target_user = None
         from app.models.user import User
-        
-        # 1. Сначала по user_id из custom_data/comment
-        if user_id:
-            target_user = db.query(User).filter(User.id == user_id).first()
-        
-        # 2. Если не нашли, по telegram_user_id
+
+        if transaction and transaction.user_id:
+            # Нашли транзакцию -> нашли пользователя
+            target_user = db.query(User).filter(User.id == transaction.user_id).first()
+            if target_user:
+                user_id = str(target_user.id)
+                # Если транзакция уже есть, plan_id берем из нее
+                if transaction.plan_id:
+                    plan_id = transaction.plan_id
+
+        # 2. Если транзакции нет (странно, но возможно при рассинхроне) или user не найден
+        # Ищем по email из payload вебхука
+        if not target_user and payload.get("email"):
+             target_user = db.query(User).filter(User.email == payload.get("email")).first()
+             if target_user:
+                 user_id = str(target_user.id)
+
+        # 3. Fallback: по telegram_user_id (если есть)
         if not target_user and telegram_user_id:
             target_user = db.query(User).filter(User.telegram_user_id == str(telegram_user_id)).first()
+            if target_user:
+                 user_id = str(target_user.id)
         
-        # 3. Как запасной вариант - по email (если Tribute его передает в payload)
-        if not target_user and payload.get("email"):
-            target_user = db.query(User).filter(User.email == payload.get("email")).first()
+        # Legacy код для совместимости со старыми методами (Products API)
+        if not target_user:
+            raw_payload_str = payload.get("payload")
+            parsed_params = {}
+            if raw_payload_str and isinstance(raw_payload_str, str):
+                try:
+                    from urllib.parse import parse_qs
+                    parsed = parse_qs(raw_payload_str)
+                    for k, v in parsed.items():
+                        if v:
+                            parsed_params[k] = v[0]
+                except Exception:
+                    pass
+            
+            uid_param = parsed_params.get("user_id")
+            if uid_param:
+                 target_user = db.query(User).filter(User.id == uid_param).first()
 
+        # Если так и не нашли пользователя
         if not target_user:
             # Не создаём Transaction с user_id=None (в модели NOT NULL).
             logger.error(
                 f"User not resolved for payment {payment_id}. "
-                f"user_id={user_id}, telegram_user_id={telegram_user_id}, email={payload.get('email')}"
+                f"email={payload.get('email')}, telegram_user_id={telegram_user_id}"
             )
             return {"status": "error", "message": "User not found for payment"}
+
+        # Проверить на дублирование (idempotency)
+        # Если транзакция найдена выше - используем её
+        existing_transaction = transaction 
+        
+        # ... далее логика начисления (без изменений) ...
 
         # Создать или обновить транзакцию
         if existing_transaction:
