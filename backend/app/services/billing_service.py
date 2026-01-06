@@ -143,20 +143,22 @@ class BillingService:
         
         try:
             async with httpx.AsyncClient() as client:
-                # Используем базовый Orders API (более универсальный, не требует настройки Shop)
+                # Используем Shop API для поддержки successUrl и failUrl
+                # ВАЖНО: Требует активации модуля "Магазин" (Shop) в боте @Tribute
                 response = await client.post(
-                    "https://api.tribute.tg/api/v1/orders",
+                    "https://tribute.tg/api/v1/shop/orders",
                     headers={
-                        "X-Service-Api-Key": settings.TRIBUTE_API_KEY,
+                        "Api-Key": settings.TRIBUTE_API_KEY, # Shop API использует Api-Key, а не X-Service-Api-Key
                         "Content-Type": "application/json"
                     },
                     json={
                         "amount": int(plan["price_eur"] * 100),  # Tribute принимает в центах
                         "currency": "eur",  # lowercase согласно документации
-                        "description": plan["name"],  # Описание заказа
+                        "title": plan["name"],  # Название заказа (для Shop API)
+                        "description": plan.get("description", plan["name"]),  # Описание
                         "payload": metadata_payload,  # Передаем ID пользователя
-                        # Примечание: successUrl и failUrl могут не поддерживаться в базовом Orders API
-                        # Если нужны редиректы, потребуется активировать Shop в боте Tribute
+                        "successUrl": "https://iqstocker.com/payment/success",
+                        "failUrl": "https://iqstocker.com/payment/error",
                     },
                     timeout=10.0
                 )
