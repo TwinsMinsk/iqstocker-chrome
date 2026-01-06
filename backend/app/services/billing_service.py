@@ -85,7 +85,11 @@ class BillingService:
         plan_id: str
     ) -> Dict:
         """
-        Создать платеж через Tribute API (Create Order)
+        Создать платеж через статичную ссылку Tribute
+        
+        Использует статичные ссылки вида https://web.tribute.tg/p/123 из админ-панели.
+        После оплаты webhook shop_order придет с email пользователя, по которому
+        мы определим пользователя и начислим кредиты.
         
         Args:
             db: Database session
@@ -102,96 +106,33 @@ class BillingService:
         if plan_id == "plan_free":
             raise ValueError("Free plan cannot be purchased")
         
-        # Создать транзакцию в БД
-        transaction = Transaction(
-            user_id=user.id,
-            amount=plan["price_eur"],
-            credits=plan["credits"],
-            type="purchase",
-            status="pending",
-            plan_id=plan_id
-        )
+        # Получаем статичную ссылку из админ-панели
+        tribute_url = app_settings_service.get_plan_payment_link(db, plan_id)
         
-        db.add(transaction)
-        db.flush()
+        if not tribute_url:
+            raise ValueError(
+                f"Payment link not configured for plan {plan_id}. "
+                f"Please set it in admin panel settings."
+            )
         
-        # === Генерируем уникальный инвойс через API Tribute ===
-        # Документация: https://wiki.tribute.tg/for-content-creators/api-documentation/orders
+        # Проверяем формат ссылки (должна быть вида https://web.tribute.tg/p/123)
+        if not tribute_url.startswith("https://web.tribute.tg/p/") and not tribute_url.startswith("https://tribute.to/"):
+            logger.warning(f"Unexpected Tribute URL format: {tribute_url}")
         
-        # Если API ключ не задан, используем статический фоллбек (для локальной разработки без API)
-        if not settings.TRIBUTE_API_KEY:
-            logger.warning("TRIBUTE_API_KEY not set. Using static link fallback (user tracking might fail without Telegram ID).")
-            tribute_url = app_settings_service.get_plan_payment_link(db, plan_id) or plan.get("tribute_link", "https://tribute.to/your-bot")
-            if "?" in tribute_url:
-                payment_url = f"{tribute_url}&user_id={user.id}&plan_id={plan_id}"
-            else:
-                payment_url = f"{tribute_url}?user_id={user.id}&plan_id={plan_id}"
-            
-            transaction.payment_id = f"tribute_pending_{transaction.id}"
-            db.commit()
-            return {
-                "payment_id": str(transaction.id),
-                "payment_url": payment_url,
-                "plan": plan["name"],
-                "amount": plan["price_eur"],
-                "currency": "EUR",
-                "expires_at": datetime.utcnow() + timedelta(hours=1)
-            }
-
-        # Формируем payload, который вернется в webhook
-        metadata_payload = f"user_id={user.id}&plan_id={plan_id}&tx_id={transaction.id}"
+        # Со статичными ссылками мы не создаем транзакцию заранее,
+        # так как не знаем, кто будет платить (пользователь может оплатить не залогинившись).
+        # Транзакция будет создана при обработке webhook'а shop_order по email.
         
-        try:
-            async with httpx.AsyncClient() as client:
-                # Используем Shop API для поддержки successUrl и failUrl
-                # ВАЖНО: Требует активации модуля "Магазин" (Shop) в боте @Tribute
-                response = await client.post(
-                    "https://tribute.tg/api/v1/shop/orders",
-                    headers={
-                        "Api-Key": settings.TRIBUTE_API_KEY, # Shop API использует Api-Key
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "amount": int(plan["price_eur"] * 100),  # Tribute принимает в центах
-                        "currency": "eur",
-                        "title": plan["name"],
-                        "description": plan.get("description", plan["name"]),
-                        # "payload": metadata_payload,  # УДАЛЕНО: Shop API не поддерживает payload
-                        "email": user.email, # ПЕРЕДАЕМ EMAIL пользователя для отслеживания
-                        "successUrl": "https://iqstocker.com/payment/success",
-                        "failUrl": "https://iqstocker.com/payment/error",
-                    },
-                    timeout=10.0
-                )
-                
-                if response.status_code not in [200, 201]:
-                    logger.error(f"Tribute API Error: {response.status_code} {response.text}")
-                    raise Exception(f"Failed to create invoice with Tribute: {response.text}")
-                
-                data = response.json()
-                payment_url = data.get("link") or data.get("invoice_link") or data.get("paymentUrl")
-                tribute_order_id = data.get("id") or data.get("uuid") # Shop API возвращает uuid
-                
-                if not payment_url:
-                    raise Exception("Tribute API returned no payment link")
-
-                transaction.payment_id = str(tribute_order_id)
-                db.commit()
-                
-                return {
-                    "payment_id": str(transaction.id),
-                    "payment_url": payment_url,
-                    "plan": plan["name"],
-                    "amount": plan["price_eur"],
-                    "currency": "EUR",
-                    "expires_at": datetime.utcnow() + timedelta(minutes=30)
-                }
-                
-        except Exception as e:
-            logger.error(f"Failed to create payment via API: {e}")
-            # Откат не делаем, транзакция просто останется pending или можно удалить
-            # Но лучше оставить для истории попыток
-            raise e
+        logger.info(f"Using static Tribute link for plan {plan_id}: {tribute_url}")
+        
+        return {
+            "payment_id": None,  # Будет определен при обработке webhook'а
+            "payment_url": tribute_url,
+            "plan": plan["name"],
+            "amount": plan["price_eur"],
+            "currency": "EUR",
+            "expires_at": None  # Статичные ссылки не имеют срока действия
+        }
     
     @staticmethod
     def get_user_transactions(

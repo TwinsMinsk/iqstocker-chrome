@@ -44,6 +44,7 @@ class TributeWebhookEvent(Base):
     payment_id = Column(String(64), nullable=True, index=True)
     telegram_user_id = Column(String(64), nullable=True, index=True)
     tribute_user_id = Column(String(64), nullable=True, index=True)
+    email = Column(String(255), nullable=True, index=True)  # Email из shop_order webhook
     currency = Column(String(16), nullable=True)
     amount = Column(Integer, nullable=True)  # cents as received (best-effort)
 

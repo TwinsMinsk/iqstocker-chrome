@@ -494,6 +494,7 @@ async def verify_tribute_webhook_signature(
     Проверка подписи Tribute webhook (админ-инструмент).
 
     Tribute подписывает HMAC-SHA256 от request body и кладёт в `trbt-signature`.
+    Используется TRIBUTE_API_KEY для проверки.
     Док: https://wiki.tribute.tg/for-content-creators/api-documentation/webhooks
     """
     from app.services.payment_service import PaymentService
@@ -501,13 +502,14 @@ async def verify_tribute_webhook_signature(
 
     secret = None
     secret_source = "missing"
-    if settings.TRIBUTE_WEBHOOK_SECRET:
-        secret = settings.TRIBUTE_WEBHOOK_SECRET
-        secret_source = "env"
-    else:
-        secret = app_settings_service.get_tribute_webhook_secret_plaintext(db)
-        if secret:
-            secret_source = "db"
+    if settings.TRIBUTE_API_KEY:
+        secret = settings.TRIBUTE_API_KEY
+        secret_source = "env (API_KEY)"
+    
+    # Для совместимости, если вдруг API ключ не задан
+    if not secret and settings.TRIBUTE_WEBHOOK_SECRET:
+         secret = settings.TRIBUTE_WEBHOOK_SECRET
+         secret_source = "env (WEBHOOK_SECRET - deprecated)"
 
     raw_bytes = request.raw_body.encode("utf-8")
     valid = PaymentService.verify_tribute_signature(raw_bytes, request.signature, secret)

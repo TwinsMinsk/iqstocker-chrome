@@ -125,9 +125,10 @@ async def tribute_webhook(
                 created_at=_parse_dt(created_at),
                 sent_at=_parse_dt(sent_at),
                 period_id=str(payload.get("period_id")) if payload.get("period_id") is not None else None,
-                payment_id=str(payload.get("payment_id") or payload.get("id")) if (payload.get("payment_id") or payload.get("id")) else None,
+                payment_id=str(payload.get("payment_id") or payload.get("id") or payload.get("uuid")) if (payload.get("payment_id") or payload.get("id") or payload.get("uuid")) else None,
                 telegram_user_id=str(payload.get("telegram_user_id")) if payload.get("telegram_user_id") is not None else None,
                 tribute_user_id=str(payload.get("user_id")) if payload.get("user_id") is not None else None,
+                email=str(payload.get("email")) if payload.get("email") else None,  # Email из shop_order
                 currency=str(payload.get("currency")).lower() if payload.get("currency") else None,
                 amount=int(payload.get("amount")) if isinstance(payload.get("amount"), (int, float)) else None,
                 signature=trbt_signature,
