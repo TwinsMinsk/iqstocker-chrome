@@ -115,19 +115,30 @@ class BillingService:
                 f"Please set it in admin panel settings."
             )
         
-        # Проверяем формат ссылки (должна быть вида https://web.tribute.tg/p/123)
-        if not tribute_url.startswith("https://web.tribute.tg/p/") and not tribute_url.startswith("https://tribute.to/"):
+        # Проверяем формат ссылки
+        # Допустимы форматы:
+        # - https://web.tribute.tg/p/...
+        # - https://web.tribute.tg/s/... (сокращенные ссылки)
+        # - https://tribute.to/...
+        if (not tribute_url.startswith("https://web.tribute.tg/p/") and 
+            not tribute_url.startswith("https://web.tribute.tg/s/") and 
+            not tribute_url.startswith("https://tribute.to/")):
             logger.warning(f"Unexpected Tribute URL format: {tribute_url}")
+        
+        # Улучшение: добавляем email пользователя в ссылку, чтобы он предзаполнился в форме оплаты Tribute
+        # Это уменьшает вероятность ошибки (оплата с другого email)
+        separator = "&" if "?" in tribute_url else "?"
+        final_payment_url = f"{tribute_url}{separator}email={user.email}"
         
         # Со статичными ссылками мы не создаем транзакцию заранее,
         # так как не знаем, кто будет платить (пользователь может оплатить не залогинившись).
         # Транзакция будет создана при обработке webhook'а shop_order по email.
         
-        logger.info(f"Using static Tribute link for plan {plan_id}: {tribute_url}")
+        logger.info(f"Using static Tribute link for plan {plan_id}: {tribute_url} (user: {user.email})")
         
         return {
             "payment_id": None,  # Будет определен при обработке webhook'а
-            "payment_url": tribute_url,
+            "payment_url": final_payment_url,
             "plan": plan["name"],
             "amount": plan["price_eur"],
             "currency": "EUR",

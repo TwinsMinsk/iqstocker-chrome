@@ -114,11 +114,22 @@ class ReferralService:
         Returns:
             Tuple[reward_credits, error_message]
         """
+        from app.core.config import settings
         if not payment_id:
             return None, "Missing payment_id for referral reward"
 
+        # Преобразуем ID для совместимости с Postgres
+        target_payer_id = payer_user_id
+        if not settings.USE_SQLITE:
+            from uuid import UUID
+            try:
+                if isinstance(payer_user_id, str):
+                    target_payer_id = UUID(payer_user_id)
+            except (ValueError, TypeError):
+                pass
+
         # 1. Находим пользователя и проверяем, есть ли referrer
-        payer = db.query(User).filter(User.id == payer_user_id).first()
+        payer = db.query(User).filter(User.id == target_payer_id).first()
         if not payer or not payer.referred_by_id:
             return None, None  # Нет реферера — ничего не делаем
         
@@ -136,16 +147,20 @@ class ReferralService:
             CreditTransaction.related_entity_id == str(payment_id),
         ).first()
         if already_rewarded:
+            logger.info(f"Referral reward already processed for payment {payment_id}")
             return None, None
         
         # 2. Проверяем конфиг награды для этого тарифа
         config = db.query(ReferralConfig).filter(
-            ReferralConfig.tariff_plan_id == plan_id,
-            ReferralConfig.is_active == True
+            ReferralConfig.tariff_plan_id == plan_id
         ).first()
         
-        if not config or config.reward_credits <= 0:
-            logger.info(f"No referral config for plan {plan_id}")
+        if not config:
+            # Пытаемся создать дефолтный конфиг, если его нет
+            config = ReferralService.get_or_create_config(db, plan_id)
+
+        if not config.is_active or config.reward_credits <= 0:
+            logger.info(f"Referral reward disabled or zero for plan {plan_id} (active={config.is_active}, reward={config.reward_credits})")
             return None, None
         
         # 3. Начисляем награду пригласившему

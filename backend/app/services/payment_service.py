@@ -12,7 +12,6 @@ from app.models.transaction import Transaction
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.core.config import settings
-from app.utils.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -338,27 +337,6 @@ class PaymentService:
         if referral_reward:
             logger.info(f"Referral reward {referral_reward} credits paid for payment {payment_uuid}")
         # === END REFERRAL HOOK ===
-                
-        # Отправить email уведомление
-        if email_service:
-            try:
-                email_service.send_email(
-                    to_email=target_user.email,
-                    subject="Кредиты успешно начислены - Midjourney Auto",
-                    html_content=f"""
-                    <html>
-                    <body>
-                        <h2>Пополнение баланса успешно!</h2>
-                        <p>Вы приобрели: <strong>{plan['name']}</strong></p>
-                        <p>Начислено кредитов: <strong>{plan['credits']}</strong></p>
-                        <p>Текущий баланс: <strong>{subscription.credits_balance}</strong></p>
-                        <p>Спасибо за покупку!</p>
-                    </body>
-                    </html>
-                    """
-                )
-            except Exception as e:
-                logger.warning(f"Failed to send payment confirmation email: {e}")
         
         db.commit()
         
@@ -618,29 +596,6 @@ class PaymentService:
         if referral_reward:
             logger.info(f"Referral reward {referral_reward} credits paid for payment {payment_id}")
         # === END REFERRAL HOOK ===
-                
-            # Отправить email уведомление
-            if email_service:
-                user = db.query(User).filter(User.id == transaction.user_id).first()
-                if user:
-                    try:
-                        email_service.send_email(
-                            to_email=user.email,
-                            subject="Кредиты успешно начислены - Midjourney Auto",
-                            html_content=f"""
-                            <html>
-                            <body>
-                                <h2>Пополнение баланса успешно!</h2>
-                                <p>Вы приобрели: <strong>{plan['name']}</strong></p>
-                                <p>Начислено кредитов: <strong>{plan['credits']}</strong></p>
-                                <p>Текущий баланс: <strong>{subscription.credits_balance}</strong></p>
-                                <p>Спасибо за покупку!</p>
-                            </body>
-                            </html>
-                            """
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to send payment confirmation email: {e}")
         
         db.commit()
         
@@ -788,26 +743,6 @@ class PaymentService:
             db.commit()
             
             logger.info(f"Cancelled subscription for user {target_user.id}")
-            
-            # Отправить email уведомление
-            if email_service:
-                try:
-                    email_service.send_email(
-                        to_email=target_user.email,
-                        subject="Подписка отменена - Midjourney Auto",
-                        html_content="""
-                        <html>
-                        <body>
-                            <h2>Подписка отменена</h2>
-                            <p>Ваша подписка была отменена.</p>
-                            <p>Оставшиеся кредиты будут доступны до истечения срока действия подписки.</p>
-                            <p>Спасибо за использование нашего сервиса!</p>
-                        </body>
-                        </html>
-                        """
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to send cancellation email: {e}")
             
             return {
                 "status": "ok",

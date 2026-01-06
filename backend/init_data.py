@@ -26,7 +26,14 @@ def init_referral_configs():
                 db.add(config)
                 print(f"✅ Создан конфиг для {plan_id}: награда {reward}")
             else:
-                print(f"ℹ️ Конфиг для {plan_id} уже существует")
+                # Если конфиг есть, но награда 0 (или не совпадает с дефолтной), можно обновить
+                # Но лучше не трогать, если админ уже настроил
+                if existing.reward_credits == 0 and reward > 0:
+                     existing.reward_credits = reward
+                     existing.is_active = True
+                     print(f"⚠️ Обновлен конфиг для {plan_id}: награда {reward}")
+                else:
+                     print(f"ℹ️ Конфиг для {plan_id} уже существует")
         
         db.commit()
         print("--- Готово ---")

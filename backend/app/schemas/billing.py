@@ -52,12 +52,12 @@ class PurchasePlanRequest(BaseModel):
 
 class PurchasePlanResponse(BaseModel):
     """Схема ответа на покупку плана"""
-    payment_id: str
+    payment_id: Optional[str] = None
     payment_url: str
     plan: str
     amount: Decimal = Field(..., description="Сумма с точностью до 2 знаков")
     currency: str = "EUR"
-    expires_at: datetime
+    expires_at: Optional[datetime] = None
     
     @field_validator('amount')
     @classmethod
