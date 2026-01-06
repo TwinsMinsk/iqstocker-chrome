@@ -105,7 +105,7 @@ class PaymentService:
         payload = webhook_data.get("payload", {})
         
         # 2. Обработать событие
-        if event_name in ["new_subscription", "new_digital_product", "payment_received", "donation", "digital_product_purchased"]:
+        if event_name in ["new_subscription", "new_digital_product", "payment_received", "donation", "digital_product_purchased", "shop_order"]:
             return await PaymentService._handle_payment(db, payload, event_name)
         elif event_name == "cancelled_subscription":
             return await PaymentService._handle_cancelled_subscription(db, payload)
