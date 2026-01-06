@@ -126,6 +126,16 @@ async def startup_event():
         print(f"⚠️ Redis initialization failed: {e}")
         print("⚠️ Continuing without Redis...")
 
+    # === LOG API KEYS (PARTIALLY MASKED) ===
+    # Выводим первые 4 и последние 4 символа ключа для проверки
+    tribute_key = settings.TRIBUTE_API_KEY
+    if tribute_key:
+        masked_key = f"{tribute_key[:4]}...{tribute_key[-4:]}" if len(tribute_key) > 8 else "***"
+        print(f"🔑 TRIBUTE_API_KEY loaded: {masked_key}")
+    else:
+        print("❌ TRIBUTE_API_KEY is missing or empty")
+    # =======================================
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
