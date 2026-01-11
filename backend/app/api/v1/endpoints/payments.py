@@ -57,6 +57,13 @@ async def tribute_webhook(
     try:
         # Получить тело запроса
         body = await request.body()
+        raw_body_str = body.decode("utf-8", errors="replace")
+        
+        # === ПРИНУДИТЕЛЬНОЕ ЛОГИРОВАНИЕ WEBHOOK (DEBUG) ===
+        # Используем print для гарантии попадания в stdout Railway
+        print(f"📦 [TRIBUTE WEBHOOK RAW] Body: {raw_body_str}")
+        print(f"🔑 [TRIBUTE WEBHOOK RAW] Signature: {trbt_signature}")
+        
         raw_sha256 = hashlib.sha256(body).hexdigest()
         
         # Распарсить JSON
@@ -65,11 +72,13 @@ async def tribute_webhook(
             
             # === ЛОГИРОВАНИЕ WEBHOOK JSON (ДЛЯ ОТЛАДКИ) ===
             # Логируем структурированный JSON для удобства чтения в логах Railway
-            logger.info(f"[TRIBUTE WEBHOOK] Received event: {webhook_data.get('name', 'unknown')}")
+            event_name = webhook_data.get('name', 'unknown')
+            print(f"✨ [TRIBUTE WEBHOOK] Parsed event: {event_name}")
+            logger.info(f"[TRIBUTE WEBHOOK] Received event: {event_name}")
             logger.info(f"[TRIBUTE WEBHOOK] Full payload: {json.dumps(webhook_data, indent=2, ensure_ascii=False)}")
-            logger.info(f"[TRIBUTE WEBHOOK] Signature: {trbt_signature[:20]}...")
             # ==============================================
         except json.JSONDecodeError:
+            print(f"❌ [TRIBUTE WEBHOOK] JSON Decode Error. Body: {raw_body_str}")
             # Логируем факт получения даже при невалидном JSON
             _log_db = SASession(bind=db.get_bind())
             try:
